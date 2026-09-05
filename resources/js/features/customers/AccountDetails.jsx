@@ -311,6 +311,7 @@ export default function AccountDetails({ customer: initialCustomer, transactions
                             <p className="text-sm text-[#9A978F] font-semibold">لا يوجد معاملات مسجلة لهذا العميل</p>
                         </div>
                     ) : (
+                        <div className="divide-y divide-[#EAE8E2]">
                             {loadedTransactions.map((tx) => {
                                 const isDebt = tx.amount > 0;
                                 const formatBalText = (val) => {
@@ -367,6 +368,7 @@ export default function AccountDetails({ customer: initialCustomer, transactions
                                     </div>
                                 )
                             })}
+                        </div>
                     )}
                 </div>
             </div>

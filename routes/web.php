@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\posController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +24,7 @@ Route::prefix('auth')->group(function () {
 
 // App Feature Pages
 Route::get('/', fn () => Inertia::render('dashboard/Index'))->name('dashboard');
-Route::get('/pos', fn () => Inertia::render('pos/Index'))->name('pos');
+Route::get('/pos', [posController::class, 'pos'])->name('pos');
 Route::get('/products', fn () => Inertia::render('products/Index'))->name('products');
 Route::get('/orders', fn () => Inertia::render('orders/Index'))->name('orders');
 
@@ -44,6 +45,8 @@ Route::get('/suppliers/{supplier}/orders', fn ($supplier) => Inertia::render('su
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 Route::get('/statistics', fn () => Inertia::render('statistics/Index'))->name('statistics');
+Route::get('/offers', fn () => Inertia::render('offers/Index'))->name('offers');
+Route::get('/regions', fn () => Inertia::render('regions/Index'))->name('regions');
 
 // Sub-Admin Management Page (Admin Only)
 Route::get('/sub-admins', fn () => Inertia::render('sub-admins/Index'))->name('sub-admins');

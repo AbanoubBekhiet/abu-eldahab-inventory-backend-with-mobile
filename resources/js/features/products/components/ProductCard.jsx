@@ -1,7 +1,7 @@
 import { Badge } from '../../../shared/components'
-import { Edit2, Trash2 } from 'lucide-react'
+import { Edit2, Trash2, Tag } from 'lucide-react'
 
-export default function ProductCard({ product, onAddToCart, onEdit, onDelete }) {
+export default function ProductCard({ product, onAddToCart, onEdit, onDelete, onAddOffer }) {
     return (
         <div
             className="rounded-2xl overflow-hidden group transition-all duration-300 hover:shadow-lg text-right"
@@ -87,6 +87,15 @@ export default function ProductCard({ product, onAddToCart, onEdit, onDelete }) 
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-[#FAF9F6]">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onAddOffer?.(product); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all hover:shadow-sm active:scale-95"
+                        style={{ backgroundColor: '#EBF5EF', color: '#2E5A44', border: '1px solid #ADCBBB' }}
+                        title="إضافة عرض على هذا المنتج"
+                    >
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>عرض</span>
+                    </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onEdit?.(product); }}
                         className="p-1.5 rounded-lg hover:bg-[#FAF9F6] text-[#7C7870] hover:text-[#2E5A44] transition-colors"

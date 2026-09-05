@@ -45,7 +45,10 @@ export default function SupplierAccountDetails({
 
     const supplier = accountData?.supplier || (typeof initialSupplier === 'object' ? initialSupplier : {})
     const balance = accountData?.balance ?? initialBalance
-    const loadedTransactions = accountData?.transactions || initialTransactions || []
+    const rawTransactions = accountData?.transactions ?? initialTransactions
+    const loadedTransactions = Array.isArray(rawTransactions)
+        ? rawTransactions
+        : (Array.isArray(rawTransactions?.data) ? rawTransactions.data : [])
 
     // Transaction Mutation
     const transactionMutation = useMutation({
@@ -214,8 +217,8 @@ export default function SupplierAccountDetails({
                                     type="number"
                                     step="0.01"
                                     min="0.01"
-                                    value={paymentForm.data.amount}
-                                    onChange={e => paymentForm.setData('amount', e.target.value)}
+                                    value={paymentData.amount}
+                                    onChange={e => setPaymentData(prev => ({ ...prev, amount: e.target.value }))}
                                     placeholder="0.00"
                                     className="w-full px-3 py-2.5 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] text-right"
                                     required
@@ -226,18 +229,18 @@ export default function SupplierAccountDetails({
                                 <label className="text-xs font-bold text-[#7C7870] mb-1 block">ملاحظات (اختياري)</label>
                                 <input
                                     type="text"
-                                    value={paymentForm.data.description}
-                                    onChange={e => paymentForm.setData('description', e.target.value)}
+                                    value={paymentData.description}
+                                    onChange={e => setPaymentData(prev => ({ ...prev, description: e.target.value }))}
                                     placeholder="سبب السداد أو رقم الفاتورة..."
                                     className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] text-right"
                                 />
                             </div>
                             <button
                                 type="submit"
-                                disabled={paymentForm.processing || !paymentForm.data.amount}
+                                disabled={transactionMutation.isPending || !paymentData.amount}
                                 className="w-full py-2.5 rounded-xl text-sm font-bold text-white bg-[#2E5A44] hover:bg-[#234533] transition-all active:scale-95 disabled:opacity-60"
                             >
-                                {paymentForm.processing ? 'جاري التسجيل...' : 'تأكيد السداد'}
+                                {transactionMutation.isPending ? 'جاري التسجيل...' : 'تأكيد السداد'}
                             </button>
                         </form>
                     </div>
@@ -262,8 +265,8 @@ export default function SupplierAccountDetails({
                                     type="number"
                                     step="0.01"
                                     min="0.01"
-                                    value={debtForm.data.amount}
-                                    onChange={e => debtForm.setData('amount', e.target.value)}
+                                    value={debtData.amount}
+                                    onChange={e => setDebtData(prev => ({ ...prev, amount: e.target.value }))}
                                     placeholder="0.00"
                                     className="w-full px-3 py-2.5 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#C0392B] text-right"
                                     required
@@ -274,18 +277,18 @@ export default function SupplierAccountDetails({
                                 <label className="text-xs font-bold text-[#7C7870] mb-1 block">ملاحظات (اختياري)</label>
                                 <input
                                     type="text"
-                                    value={debtForm.data.description}
-                                    onChange={e => debtForm.setData('description', e.target.value)}
+                                    value={debtData.description}
+                                    onChange={e => setDebtData(prev => ({ ...prev, description: e.target.value }))}
                                     placeholder="سبب الإضافة أو رقم الفاتورة..."
                                     className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#C0392B] text-right"
                                 />
                             </div>
                             <button
                                 type="submit"
-                                disabled={debtForm.processing || !debtForm.data.amount}
+                                disabled={transactionMutation.isPending || !debtData.amount}
                                 className="w-full py-2.5 rounded-xl text-sm font-bold text-white bg-[#C0392B] hover:bg-[#A93226] transition-all active:scale-95 disabled:opacity-60"
                             >
-                                {debtForm.processing ? 'جاري التسجيل...' : 'تأكيد إضافة المبلغ'}
+                                {transactionMutation.isPending ? 'جاري التسجيل...' : 'تأكيد إضافة المبلغ'}
                             </button>
                         </form>
                     </div>

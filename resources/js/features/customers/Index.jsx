@@ -22,6 +22,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         address: '',
         shop_name: '',
         category_of_place: '',
+        region_id: '',
     })
     const [formErrors, setFormErrors] = useState({})
 
@@ -37,6 +38,16 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
 
     const loadedCustomers = customersData?.customers?.data || customersData?.data || []
 
+    // React Query: Fetch Regions
+    const { data: regionsData } = useQuery({
+        queryKey: ['regions'],
+        queryFn: async () => {
+            const res = await api.get('/regions')
+            return res.data
+        },
+    })
+    const regions = regionsData?.data || []
+
     // Add Customer Mutation
     const addMutation = useMutation({
         mutationFn: async (payload) => {
@@ -46,7 +57,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         onSuccess: (data) => {
             setAlert({ type: 'success', message: data.message || 'تم إضافة العميل بنجاح!' })
             setIsAddOpen(false)
-            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '' })
+            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => {
@@ -68,7 +79,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         onSuccess: (data) => {
             setAlert({ type: 'success', message: data.message || 'تم تحديث بيانات العميل بنجاح!' })
             setEditingCustomer(null)
-            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '' })
+            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => {
@@ -115,7 +126,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
 
     const openAddModal = () => {
         setFormErrors({})
-        setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '' })
+        setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
         setIsAddOpen(true)
     }
 
@@ -128,6 +139,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
             address: cust.address === '—' ? '' : cust.address,
             shop_name: cust.shop_name === '—' ? '' : cust.shop_name,
             category_of_place: cust.category_of_place === '—' ? '' : cust.category_of_place,
+            region_id: cust.region_id || '',
         })
     }
 
@@ -400,16 +412,31 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                         {formErrors.address && <p className="text-xs text-red-500">{formErrors.address}</p>}
                                     </div>
                                     <div className="space-y-1 text-right">
-                                        <label className="text-xs font-bold text-[#7C7870]">تصنيف النشاط</label>
-                                        <input
-                                            type="text"
-                                            placeholder="مشتل، مزرعة، محل تنسيق..."
-                                            value={formData.category_of_place}
-                                            onChange={e => setFormData({ ...formData, category_of_place: e.target.value })}
-                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
-                                        />
-                                        {formErrors.category_of_place && <p className="text-xs text-red-500">{formErrors.category_of_place}</p>}
+                                        <label className="text-xs font-bold text-[#7C7870]">المنطقة</label>
+                                        <select
+                                            value={formData.region_id}
+                                            onChange={e => setFormData({ ...formData, region_id: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white"
+                                        >
+                                            <option value="">-- بدون منطقة --</option>
+                                            {regions.map(r => (
+                                                <option key={r.id} value={r.id}>{r.name}</option>
+                                            ))}
+                                        </select>
+                                        {formErrors.region_id && <p className="text-xs text-red-500">{formErrors.region_id}</p>}
                                     </div>
+                                </div>
+
+                                <div className="space-y-1 text-right">
+                                    <label className="text-xs font-bold text-[#7C7870]">تصنيف النشاط</label>
+                                    <input
+                                        type="text"
+                                        placeholder="مشتل، مزرعة، محل تنسيق..."
+                                        value={formData.category_of_place}
+                                        onChange={e => setFormData({ ...formData, category_of_place: e.target.value })}
+                                        className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                    />
+                                    {formErrors.category_of_place && <p className="text-xs text-red-500">{formErrors.category_of_place}</p>}
                                 </div>
 
                                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#FAF9F6]">
@@ -493,15 +520,30 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                         {formErrors.address && <p className="text-xs text-red-500">{formErrors.address}</p>}
                                     </div>
                                     <div className="space-y-1 text-right">
-                                        <label className="text-xs font-bold text-[#7C7870]">تصنيف النشاط</label>
-                                        <input
-                                            type="text"
-                                            value={formData.category_of_place}
-                                            onChange={e => setFormData({ ...formData, category_of_place: e.target.value })}
-                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
-                                        />
-                                        {formErrors.category_of_place && <p className="text-xs text-red-500">{formErrors.category_of_place}</p>}
+                                        <label className="text-xs font-bold text-[#7C7870]">المنطقة</label>
+                                        <select
+                                            value={formData.region_id}
+                                            onChange={e => setFormData({ ...formData, region_id: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white"
+                                        >
+                                            <option value="">-- بدون منطقة --</option>
+                                            {regions.map(r => (
+                                                <option key={r.id} value={r.id}>{r.name}</option>
+                                            ))}
+                                        </select>
+                                        {formErrors.region_id && <p className="text-xs text-red-500">{formErrors.region_id}</p>}
                                     </div>
+                                </div>
+
+                                <div className="space-y-1 text-right">
+                                    <label className="text-xs font-bold text-[#7C7870]">تصنيف النشاط</label>
+                                    <input
+                                        type="text"
+                                        value={formData.category_of_place}
+                                        onChange={e => setFormData({ ...formData, category_of_place: e.target.value })}
+                                        className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                    />
+                                    {formErrors.category_of_place && <p className="text-xs text-red-500">{formErrors.category_of_place}</p>}
                                 </div>
 
                                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#FAF9F6]">
@@ -651,6 +693,14 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                         <div className="flex items-center justify-between">
                                             <span className="text-[#1A2D23]">{viewingCustomer.email}</span>
                                             <span className="text-xs text-[#9A978F]">البريد الإلكتروني:</span>
+                                        </div>
+                                    )}
+                                    {viewingCustomer.region_id && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[#1A2D23]">
+                                                {regions.find(r => r.id == viewingCustomer.region_id)?.name || viewingCustomer.region_id}
+                                            </span>
+                                            <span className="text-xs text-[#9A978F]">المنطقة:</span>
                                         </div>
                                     )}
                                 </div>

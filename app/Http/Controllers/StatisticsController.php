@@ -229,7 +229,7 @@ class StatisticsController extends Controller
     {
         $request->validate([
             'from' => 'required|date',
-            'to'   => 'required|date',
+            'to'   => 'required|date|after_or_equal:from',
         ]);
 
         $stats = $this->buildStats($request->from, $request->to);

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Leaf, Lock } from 'lucide-react'
+import { Leaf, Lock, Mail } from 'lucide-react'
 import api, { setAuthToken } from '../../shared/services/api'
 
 export default function Login() {
+    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
     const [processing, setProcessing] = useState(false)
@@ -12,10 +13,10 @@ export default function Login() {
         setProcessing(true)
         setError(null)
         try {
-            const response = await api.post('/auth/login', { password })
+            const response = await api.post('/auth/login', { email, password, for_web: true })
             if (response.data.success && response.data.access_token) {
                 setAuthToken(response.data.access_token, response.data.user)
-                window.location.href = '/'
+                window.location.href = response.data.redirect_path || '/'
             } else {
                 setError(response.data.message || 'بيانات الدخول غير صحيحة')
             }
@@ -70,18 +71,19 @@ export default function Login() {
                 )}
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Email / Username Input */}
                     <div>
                         <label className="block text-sm font-semibold mb-2" style={{ color: '#5C5950' }}>
-                            كلمة المرور للدخول
+                            البريد الإلكتروني أو اسم المستخدم
                         </label>
                         <div className="relative">
                             <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full pl-4 pr-12 py-3.5 rounded-xl text-lg font-bold text-center tracking-widest transition-all duration-200 focus:outline-none"
+                                type="text"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="name@example.com"
+                                className="w-full pl-4 pr-12 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none"
                                 style={{
                                     backgroundColor: '#F4F3EF',
                                     border: '1px solid #E2E0DA',
@@ -97,6 +99,40 @@ export default function Login() {
                                 }}
                                 required
                                 autoFocus
+                            />
+                            <Mail
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5"
+                                style={{ color: '#B8B5AE' }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Password Input */}
+                    <div>
+                        <label className="block text-sm font-semibold mb-2" style={{ color: '#5C5950' }}>
+                            كلمة المرور
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full pl-4 pr-12 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none"
+                                style={{
+                                    backgroundColor: '#F4F3EF',
+                                    border: '1px solid #E2E0DA',
+                                    color: '#1A2D23',
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = '#2E5A44'
+                                    e.target.style.boxShadow = '0 0 0 3px rgba(46,90,68,0.1)'
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = '#E2E0DA'
+                                    e.target.style.boxShadow = 'none'
+                                }}
+                                required
                             />
                             <Lock
                                 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5"
@@ -118,7 +154,7 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3.5 rounded-xl font-bold text-white transition-all duration-200 hover:opacity-95 active:scale-[0.98] shadow-md disabled:opacity-50"
+                        className="w-full py-3.5 rounded-xl font-bold text-white transition-all duration-200 hover:opacity-95 active:scale-[0.98] shadow-md disabled:opacity-50 mt-2"
                         style={{
                             backgroundColor: '#2E5A44',
                             boxShadow: '0 4px 12px rgba(46,90,68,0.25)',

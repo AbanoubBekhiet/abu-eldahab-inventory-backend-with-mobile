@@ -10,9 +10,9 @@ export default function AppLayout({ children, title, subtitle }) {
         const path = window.location.pathname
         const role = getUserRole()
 
-        // Customers must be redirected to /shop
-        if (role === 'customer' && !path.startsWith('/shop')) {
-            window.location.href = '/shop'
+        // Customers must not access the web application
+        if (role === 'customer') {
+            window.location.href = '/login'
             return
         }
 

@@ -37,4 +37,15 @@ class Product extends Model implements HasMedia
     public function order(){
         return $this->hasMany(Order::class);
     }
+
+    public function offers(){
+        return $this->hasMany(Offer::class);
+    }
+
+    public function activeOffer(){
+        return $this->hasOne(Offer::class)
+                    ->where('is_active', true)
+                    ->where('expires_at', '>', now())
+                    ->latest();
+    }
 }

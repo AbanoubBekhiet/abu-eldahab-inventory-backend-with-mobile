@@ -13,9 +13,15 @@ class Profile extends Model
         'shop_name',
         'latitude',
         'longitude',
+        'region_id',
     ];
 
     public function user(){
         return $this->belongsTo(User::class);
+    }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
     }
 }

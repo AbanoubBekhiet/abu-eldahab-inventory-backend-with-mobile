@@ -293,6 +293,8 @@ class OrdersController extends Controller
             'customer'         => $order->user?->name ?? 'غير معروف',
             'customer_address' => $order->user?->profile?->address ?? '',
             'customer_phone'   => $order->user?->profile?->phone_number ?? '',
+            'customer_latitude' => $order->user?->profile?->latitude,
+            'customer_longitude'=> $order->user?->profile?->longitude,
             'items'            => $order->products->count(),
             'total'            => number_format(floatval($order->total_price), 2) . ' ج.م',
             'total_amount'     => floatval($order->total_price),
@@ -317,10 +319,15 @@ class OrdersController extends Controller
             $base['products'] = $order->products->map(function ($product) use ($returnedMap) {
                 $orderedQty  = $product->pivot->quantity;
                 $returnedQty = $returnedMap->get($product->id, 0);
+                
+                $media = $product->getFirstMedia('products');
+                $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+
                 return [
                     'id'                     => $product->id,
                     'name'                   => $product->name,
                     'unit'                   => $product->unit ?? '',
+                    'image_url'              => $imageUrl,
                     'number_of_items_in_unit'=> intval($product->number_of_items_in_unit),
                     'quantity'               => $orderedQty,
                     'price'                  => floatval($product->pivot->price),
@@ -545,6 +552,7 @@ class OrdersController extends Controller
             try {
                 $totalPrice = 0;
                 $totalProfit = 0;
+                $totalItemsCount = 0;
 
                 // Determine if the requesting user is an admin/sub-admin (no limits apply)
                 $requestingUser = $request->user();
@@ -559,10 +567,19 @@ class OrdersController extends Controller
                     $qty = intval($item['quantity']);
 
                     // Only enforce max_app_order_quantity for customers
-                    if (!$isAdmin && $product->max_app_order_quantity !== null && $qty > $product->max_app_order_quantity) {
+                    $activeOffer = \App\Models\Offer::where('product_id', $product->id)
+                        ->where('is_active', true)
+                        ->where('expires_at', '>', now())
+                        ->first();
+                        
+                    $maxAllowed = $activeOffer && $activeOffer->offer_max_quantity !== null 
+                        ? $activeOffer->offer_max_quantity 
+                        : $product->max_app_order_quantity;
+
+                    if (!$isAdmin && $maxAllowed !== null && $qty > $maxAllowed) {
                         return response()->json([
                             'success' => false,
-                            'message' => "الكمية المطلوبة من المنتج '{$product->name}' تتجاوز الأقصى المسموح ({$product->max_app_order_quantity})"
+                            'message' => "الكمية المطلوبة من المنتج '{$product->name}' تتجاوز الأقصى المسموح ({$maxAllowed})"
                         ], 422);
                     }
 
@@ -576,6 +593,27 @@ class OrdersController extends Controller
                     $unitPrice = isset($item['unit_price']) ? floatval($item['unit_price']) : floatval($product->price);
                     $totalPrice += $unitPrice * $qty;
                     $totalProfit += ($unitPrice - floatval($product->cost_price)) * $qty;
+                    $totalItemsCount += $qty;
+                }
+
+                // Enforce Region limits for app customers
+                if (!$isAdmin && $requestingUser && $requestingUser->profile && $requestingUser->profile->region_id) {
+                    $region = $requestingUser->profile->region;
+                    if ($region) {
+                        if ($region->min_order_total > 0 && $totalPrice < $region->min_order_total) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "الحد الأدنى لقيمة الطلب لمنطقتك ({$region->name}) هو {$region->min_order_total} ج.م"
+                            ], 422);
+                        }
+
+                        if ($region->min_products_count > 0 && count($request->items) < $region->min_products_count) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "الحد الأدنى لعدد المنتجات لمنطقتك ({$region->name}) هو {$region->min_products_count} صنف"
+                            ], 422);
+                        }
+                    }
                 }
 
                 $firstItem = $request->items[0];

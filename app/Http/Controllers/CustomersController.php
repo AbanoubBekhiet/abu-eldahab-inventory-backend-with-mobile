@@ -85,6 +85,7 @@ class CustomersController extends Controller
             'address' => 'nullable|string|max:255',
             'shop_name' => 'required|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
+            'region_id' => 'nullable|exists:regions,id',
         ]);
 
         DB::beginTransaction();
@@ -101,6 +102,7 @@ class CustomersController extends Controller
                 'address' => $request->address,
                 'shop_name' => $request->shop_name,
                 'category_of_place' => $request->category_of_place,
+                'region_id' => $request->region_id,
             ]);
 
             DB::commit();
@@ -125,6 +127,7 @@ class CustomersController extends Controller
             'address' => 'nullable|string|max:255',
             'shop_name' => 'required|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
+            'region_id' => 'nullable|exists:regions,id',
         ]);
 
         DB::beginTransaction();
@@ -141,6 +144,7 @@ class CustomersController extends Controller
                     'address' => $request->address,
                     'shop_name' => $request->shop_name,
                     'category_of_place' => $request->category_of_place,
+                    'region_id' => $request->region_id,
                 ]
             );
 
@@ -528,6 +532,7 @@ class CustomersController extends Controller
 
         $unlinkedOrders = \App\Models\Order::where('user_id', $id)
             ->whereNotIn('id', $existingOrderIdsInTx)
+            ->where('payment_type', '!=', 'كاش')
             ->get();
 
         foreach ($unlinkedOrders as $ord) {
@@ -668,6 +673,8 @@ class CustomersController extends Controller
                 'email'               => $user->email ?? '—',
                 'phone'               => $user->profile?->phone_number ?? '—',
                 'address'             => $user->profile?->address ?? '—',
+                'latitude'            => $user->profile?->latitude,
+                'longitude'           => $user->profile?->longitude,
                 'shop_name'           => $user->profile?->shop_name ?? '—',
                 'category_of_place'   => $user->profile?->category_of_place ?? '—',
                 'orders_count'        => $user->orders->count(),
@@ -717,6 +724,7 @@ class CustomersController extends Controller
                 'address'           => $request->address,
                 'shop_name'         => $request->shop_name,
                 'category_of_place' => $request->category_of_place,
+                'region_id'         => $request->region_id,
             ]);
 
             DB::commit();
@@ -738,6 +746,7 @@ class CustomersController extends Controller
             'address'           => 'nullable|string|max:255',
             'shop_name'         => 'nullable|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
+            'region_id'         => 'nullable|exists:regions,id',
         ]);
 
         DB::beginTransaction();
@@ -753,6 +762,7 @@ class CustomersController extends Controller
                     'address'           => $request->address,
                     'shop_name'         => $request->shop_name,
                     'category_of_place' => $request->category_of_place,
+                    'region_id'         => $request->region_id,
                 ]
             );
 
@@ -934,6 +944,7 @@ class CustomersController extends Controller
 
         $unlinkedOrders = \App\Models\Order::where('user_id', $id)
             ->whereNotIn('id', $existingOrderIdsInTx)
+            ->where('payment_type', '!=', 'كاش')
             ->get();
 
         foreach ($unlinkedOrders as $ord) {

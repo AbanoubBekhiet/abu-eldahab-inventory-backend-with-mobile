@@ -121,9 +121,16 @@ export default function StatisticsIndex({ unlocked: _initialUnlocked, stats: _in
         setRangeError('')
         try {
             const res = await api.get(`/statistics/range`, { params: { from, to } })
-            setRangeStats(res.data)
-        } catch {
-            setRangeError('حدث خطأ أثناء جلب البيانات')
+            // apiRange returns { ok: true, stats: { range: {...}, today, month, ... } }
+            const data = res.data
+            if (data.ok === false) {
+                setRangeError(data.message || 'حدث خطأ أثناء جلب البيانات')
+                return
+            }
+            // Support both shapes: { ok, stats } or direct stats object
+            setRangeStats(data.stats ?? data)
+        } catch (err) {
+            setRangeError(err.response?.data?.message || 'حدث خطأ أثناء جلب البيانات')
         } finally {
             setRangeLoading(false)
         }

@@ -288,7 +288,7 @@ class ProductsController extends Controller
         $categoryId = $request->input('category_id');
         $forApp = $request->boolean('for_app');
 
-        $query = Product::with(['category', 'media']);
+        $query = Product::with(['category', 'media', 'activeOffer']);
 
         if ($forApp || ($request->user() && $request->user()->isCustomer())) {
             $query->where('is_available_on_app', 1);
@@ -322,6 +322,7 @@ class ProductsController extends Controller
             $products = collect($itemsList)->map(function ($product) {
                 $media = $product->getFirstMedia('products');
                 $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+                $activeOffer = $product->activeOffer;
                 return [
                     'id'                      => $product->id,
                     'name'                    => $product->name,
@@ -336,6 +337,14 @@ class ProductsController extends Controller
                     'category_id'             => $product->category_id,
                     'category_name'           => $product->category ? $product->category->name : 'بدون قسم',
                     'image_url'               => $imageUrl,
+                    'active_offer'            => $activeOffer ? [
+                        'id'                  => $activeOffer->id,
+                        'offer_price'         => floatval($activeOffer->offer_price),
+                        'original_price'      => floatval($activeOffer->original_price),
+                        'discount_percentage' => $activeOffer->original_price > 0 ? round((1 - $activeOffer->offer_price / $activeOffer->original_price) * 100) : 0,
+                        'expires_at'          => $activeOffer->expires_at->toIso8601String(),
+                        'offer_max_quantity'  => $activeOffer->offer_max_quantity,
+                    ] : null,
                 ];
             });
 
@@ -356,6 +365,7 @@ class ProductsController extends Controller
         $products = collect($paginator->items())->map(function($product) {
             $media = $product->getFirstMedia('products');
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+            $activeOffer = $product->activeOffer;
             return [
                 'id'                      => $product->id,
                 'name'                    => $product->name,
@@ -370,6 +380,14 @@ class ProductsController extends Controller
                 'category_id'             => $product->category_id,
                 'category_name'           => $product->category ? $product->category->name : 'بدون قسم',
                 'image_url'               => $imageUrl,
+                'active_offer'            => $activeOffer ? [
+                    'id'                  => $activeOffer->id,
+                    'offer_price'         => floatval($activeOffer->offer_price),
+                    'original_price'      => floatval($activeOffer->original_price),
+                    'discount_percentage' => $activeOffer->original_price > 0 ? round((1 - $activeOffer->offer_price / $activeOffer->original_price) * 100) : 0,
+                    'expires_at'          => $activeOffer->expires_at->toIso8601String(),
+                    'offer_max_quantity'  => $activeOffer->offer_max_quantity,
+                ] : null,
             ];
         });
 

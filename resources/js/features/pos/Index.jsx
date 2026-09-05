@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePage, router } from '@inertiajs/react'
 import { SearchInput } from '../../shared/components'
 import Cart from './components/Cart'
 import POSProductCard from './components/POSProductCard'
@@ -10,7 +11,9 @@ import { buildPrintHTML } from '../orders/components/OrderDetailsModal'
 import api from '../../shared/services/api'
 
 export default function POSIndex({ products: initialProducts, categories: initialCategories, customers: initialCustomers, pendingCarts: initialPendingCarts }) {
+    const { appSettings } = usePage().props || {}
     const queryClient = useQueryClient()
+    const loadMoreRef = useRef(null)
 
     // Active cart state
     const [cart, setCart]                         = useState([])
@@ -23,33 +26,118 @@ export default function POSIndex({ products: initialProducts, categories: initia
     // Notification states
     const [notice, setNotice]                     = useState(null)
 
-    // Products filter state
-    const [productSearch, setProductSearch]        = useState({ query: '', category_id: '' })
+    // Products filter state — typed search + selected category
+    const [searchInput, setSearchInput]            = useState('')
+    const [appliedSearch, setAppliedSearch]        = useState({ query: '', category_id: '' })
 
-    // React Query: POS Main Data (Products, Categories, Customers, Pending Carts)
-    const { data: posData, isLoading: isPosLoading } = useQuery({
-        queryKey: ['pos', productSearch],
-        queryFn: async () => {
-            const res = await api.get('/pos', {
-                params: {
-                    query: productSearch.query || undefined,
-                    category_id: productSearch.category_id || undefined,
-                }
+    // Infinite scroll page state (reset when filter changes)
+    const [page, setPage]                          = useState(1)
+    const [allProducts, setAllProducts]            = useState(() => {
+        // Seed from SSR data
+        if (initialProducts?.data) return initialProducts.data
+        if (Array.isArray(initialProducts)) return initialProducts
+        return []
+    })
+    const [hasMore, setHasMore]                    = useState(() => initialProducts?.next_page_url != null)
+    const [isLoadingMore, setIsLoadingMore]        = useState(false)
+
+    // Debounce search input → appliedSearch
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setAppliedSearch(prev => {
+                if (prev.query === searchInput) return prev
+                return { ...prev, query: searchInput }
             })
-            return res.data
-        },
-        initialData: initialProducts ? {
+        }, 300)
+        return () => clearTimeout(t)
+    }, [searchInput])
+
+    // When filter changes, reset product list and page
+    useEffect(() => {
+        setAllProducts([])
+        setHasMore(true)
+        setPage(1)
+    }, [appliedSearch])
+
+    // Fetch one page of products when page or filter changes
+    const fetchProducts = useCallback(async (pageNum, filter) => {
+        const res = await api.get('/pos', {
+            params: {
+                query: filter.query || undefined,
+                category_id: filter.category_id || undefined,
+                page: pageNum,
+            }
+        })
+        return res.data
+    }, [])
+
+    // Load page 1 whenever filter changes (replaces initial data too when no filters)
+    const { data: posData, isLoading: isPosLoading } = useQuery({
+        queryKey: ['pos-meta', appliedSearch],
+        queryFn: async () => fetchProducts(1, appliedSearch),
+        placeholderData: (!appliedSearch.query && !appliedSearch.category_id) ? {
             products: initialProducts,
             categories: initialCategories,
             customers: initialCustomers,
             pendingCarts: initialPendingCarts,
         } : undefined,
+        staleTime: 0,
     })
 
-    const displayedProducts = posData?.products?.data || []
-    const categories        = posData?.categories || []
-    const customers         = posData?.customers || []
-    const pendingCarts      = posData?.pendingCarts || []
+    // When posData page 1 arrives, seed allProducts
+    useEffect(() => {
+        if (!posData) return
+        const data = posData.products?.data ?? (Array.isArray(posData.products) ? posData.products : [])
+        setAllProducts(data)
+        setHasMore(!!posData.products?.next_page_url)
+        setPage(1)
+    }, [posData])
+
+    // Derived lists from posData
+    const categories    = posData?.categories   || initialCategories || []
+    const customers     = posData?.customers    || initialCustomers  || []
+    const pendingCarts  = Array.isArray(posData?.pendingCarts)
+        ? posData.pendingCarts
+        : (posData?.pendingCarts?.data ?? (initialPendingCarts?.data ?? (Array.isArray(initialPendingCarts) ? initialPendingCarts : [])))
+
+    // ── Infinite scroll: load next page when sentinel is visible ──
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isPosLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchProducts(nextPage, appliedSearch).then(res => {
+                        const more = res.products?.data ?? []
+                        setAllProducts(prev => [...prev, ...more])
+                        setHasMore(!!res.products?.next_page_url)
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isPosLoading, page, appliedSearch, fetchProducts])
+
+    // ── Pending Carts local state — instant UI updates ──────────────────
+    const [localPendingCarts, setLocalPendingCarts] = useState(() => {
+        if (Array.isArray(initialPendingCarts)) return initialPendingCarts
+        if (Array.isArray(initialPendingCarts?.data)) return initialPendingCarts.data
+        return []
+    })
+
+    // Keep local state in sync when server data arrives (e.g. on refresh)
+    useEffect(() => {
+        if (!posData?.pendingCarts) return
+        const fresh = Array.isArray(posData.pendingCarts)
+            ? posData.pendingCarts
+            : (posData.pendingCarts?.data ?? [])
+        setLocalPendingCarts(fresh)
+    }, [posData?.pendingCarts])
 
     // Save Pending Cart Mutation
     const saveCartMutation = useMutation({
@@ -61,7 +149,11 @@ export default function POSIndex({ products: initialProducts, categories: initia
             setNotice({ type: 'success', text: data.message || 'تم حفظ السلة كسلة معلقة بنجاح!' })
             setCart([])
             setSelectedCustomer(null)
-            queryClient.invalidateQueries({ queryKey: ['pos'] })
+            // Optimistically add the saved cart to local list immediately
+            if (data.pending_cart) {
+                setLocalPendingCarts(prev => [{ ...data.pending_cart, customer: null, items: [] }, ...prev])
+            }
+            queryClient.invalidateQueries({ queryKey: ['pos-meta'] })
         },
         onError: (err) => {
             setNotice({ type: 'error', text: err.response?.data?.message || 'حدث خطأ أثناء حفظ السلة' })
@@ -80,7 +172,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
                 setSelectedCustomer(data.resumed_cart.customer || null)
                 setNotice({ type: 'success', text: 'تم استئناف السلة المعلقة!' })
             }
-            queryClient.invalidateQueries({ queryKey: ['pos'] })
+            queryClient.invalidateQueries({ queryKey: ['pos-meta'] })
         },
         onError: (err) => {
             setNotice({ type: 'error', text: err.response?.data?.message || 'حدث خطأ أثناء استبدال السلة' })
@@ -100,8 +192,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
             setCart([])
             setSelectedCustomer(null)
             setNotice({ type: 'success', text: data.message || 'تم إتمام الطلب بنجاح!' })
-            queryClient.invalidateQueries({ queryKey: ['pos'] })
-            queryClient.invalidateQueries({ queryKey: ['products'] })
+            queryClient.invalidateQueries({ queryKey: ['pos-meta'] })
         },
         onError: (err) => {
             setNotice({ type: 'error', text: err.response?.data?.message || 'حدث خطأ أثناء إتمام الطلب' })
@@ -114,12 +205,17 @@ export default function POSIndex({ products: initialProducts, categories: initia
             const res = await api.delete(`/pos/pending-carts/${id}`)
             return res.data
         },
+        onMutate: (id) => {
+            // Optimistically remove from local list immediately
+            setLocalPendingCarts(prev => prev.filter(c => c.id !== id))
+        },
         onSuccess: (data) => {
             setNotice({ type: 'success', text: data.message || 'تم حذف السلة المعلقة بنجاح!' })
-            queryClient.invalidateQueries({ queryKey: ['pos'] })
+            queryClient.invalidateQueries({ queryKey: ['pos-meta'] })
         },
-        onError: (err) => {
+        onError: (err, id) => {
             setNotice({ type: 'error', text: err.response?.data?.message || 'حدث خطأ أثناء حذف السلة المعلقة' })
+            queryClient.invalidateQueries({ queryKey: ['pos-meta'] })
         }
     })
 
@@ -189,12 +285,17 @@ export default function POSIndex({ products: initialProducts, categories: initia
 
     // Save cart as pending
     const handleSaveCart = (customer) => {
+        const targetCustomer = customer || selectedCustomer
+        if (!targetCustomer || !targetCustomer.id) {
+            setNotice({ type: 'error', text: 'يجب اختيار عميل أولاً لحفظ السلة المعلقة' })
+            return
+        }
         if (cart.length === 0 || saveCartMutation.isPending) return
         const total = cart.reduce((s, i) => s + i.price * i.quantity, 0)
         const items_count = cart.reduce((s, i) => s + i.quantity, 0)
 
         saveCartMutation.mutate({
-            customer_id: customer.id,
+            customer_id: targetCustomer.id,
             items: cart.map(item => ({
                 id: item.id,
                 quantity: item.quantity,
@@ -209,6 +310,9 @@ export default function POSIndex({ products: initialProducts, categories: initia
     const handleResume = (pendingCart) => {
         const total = cart.reduce((s, i) => s + i.price * i.quantity, 0)
         const items_count = cart.reduce((s, i) => s + i.quantity, 0)
+
+        // Optimistically remove the resumed cart from the list immediately
+        setLocalPendingCarts(prev => prev.filter(c => c.id !== pendingCart.id))
 
         if (cart.length > 0) {
             if (!selectedCustomer) {
@@ -247,7 +351,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
             })),
             total_price: parseFloat(total.toFixed(2)),
             payment_type: paymentType,
-            paid_amount: paymentType === 'آجل' ? paidAmount : 0,
+            paid_amount: paymentType === 'آجل' ? paidAmount : parseFloat(total.toFixed(2)),
         })
     }
 
@@ -294,7 +398,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
                 {/* Back button + title */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                        onClick={() => router.visit('/')}
+                        onClick={() => window.history.back()}
                         className="p-1.5 rounded-lg hover:bg-[#FAF9F6] transition-colors border border-[#EAE8E2]"
                     >
                         <ArrowLeft className="w-4 h-4 text-[#5C5950]" />
@@ -305,7 +409,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
                 {/* Pending carts horizontal strip */}
                 <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden">
                     <span className="text-[10px] font-semibold text-[#9A978F] whitespace-nowrap flex-shrink-0">معلقة:</span>
-                    <PendingCartsPanel onResume={handleResume} />
+                    <PendingCartsPanel pendingCarts={localPendingCarts} onResume={handleResume} onDelete={(id) => deletePendingCartMutation.mutate(id)} />
                 </div>
 
                 {/* Toast Notification */}
@@ -355,30 +459,31 @@ export default function POSIndex({ products: initialProducts, categories: initia
                     {/* Search + Category Filter */}
                     <div className="px-3 py-2.5 space-y-2 bg-white border-b border-[#EAE8E2] flex-shrink-0">
                         <SearchInput
-                            placeholder="ابحث..."
-                            value={productSearch.query}
-                            onChange={(e) => setProductSearch({ ...productSearch, query: e.target.value })}
+                            placeholder="ابحث عن منتج..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
                         />
                         <CategoryFilter
                             categories={categories}
-                            selected={productSearch.category_id}
-                            onChange={(categoryId) => setProductSearch({
-                                ...productSearch,
-                                category_id: categoryId === 'all' ? '' : categoryId,
-                            })}
+                            selected={appliedSearch.category_id || 'all'}
+                            onChange={(categoryId) => setAppliedSearch(prev => ({ ...prev, category_id: categoryId === 'all' ? '' : categoryId }))}
                         />
                     </div>
 
                     {/* Products Grid — 3 columns compact */}
                     <div className="flex-1 overflow-y-auto p-2">
-                        {displayedProducts.length === 0 ? (
+                        {isPosLoading && allProducts.length === 0 ? (
+                            <div className="h-full flex items-center justify-center">
+                                <RefreshCw className="w-5 h-5 text-[#9A978F] animate-spin" />
+                            </div>
+                        ) : allProducts.length === 0 ? (
                             <div className="h-full flex items-center justify-center">
                                 <p className="text-xs text-[#9A978F] font-semibold text-center">لا توجد منتجات</p>
                             </div>
                         ) : (
                             <>
                                 <div className="grid grid-cols-3 gap-1.5">
-                                    {displayedProducts.map((product) => (
+                                    {allProducts.map((product) => (
                                         <POSProductCard
                                             key={product.id}
                                             product={product}
@@ -387,11 +492,14 @@ export default function POSIndex({ products: initialProducts, categories: initia
                                     ))}
                                 </div>
                                 <div ref={loadMoreRef} className="py-4 flex justify-center">
-                                    {isSearching && (
+                                    {(isLoadingMore || (isPosLoading && allProducts.length > 0)) && (
                                         <span className="flex items-center gap-1.5 text-[10px] text-[#9A978F] animate-pulse">
                                             <RefreshCw className="w-3 h-3 animate-spin" />
-                                            تحميل...
+                                            تحميل المزيد...
                                         </span>
+                                    )}
+                                    {!hasMore && allProducts.length > 0 && (
+                                        <span className="text-[10px] text-[#C8C5BE]">تم تحميل جميع المنتجات</span>
                                     )}
                                 </div>
                             </>

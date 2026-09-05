@@ -11,6 +11,7 @@ use App\Http\Controllers\posController;
 use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\OffersController;
 
 use App\Http\Controllers\SubAdminController;
 
@@ -20,7 +21,11 @@ use App\Http\Controllers\SubAdminController;
 |--------------------------------------------------------------------------
 */
 
+use App\Http\Controllers\RegionsController;
+
 // Public / Auth routes
+Route::get('/regions', [RegionsController::class, 'apiIndex']);
+
 Route::prefix('auth')->group(function () {
     Route::get('/check-registered', [AuthController::class, 'checkRegistered']);
     Route::post('/login', [AuthController::class, 'apiLogin']);
@@ -30,19 +35,25 @@ Route::prefix('auth')->group(function () {
     Route::post('/verify-reset-code', [AuthController::class, 'apiVerifyResetCode']);
 });
 
-// App settings logo public stream
+// App settings public endpoints
 Route::get('/settings-logo', [SettingsController::class, 'getLogo'])->name('api.settings.logo');
+Route::get('/settings', [SettingsController::class, 'apiIndex']);
 
 // Protected API Routes (Requires Sanctum Bearer Token)
 Route::middleware('auth:sanctum')->group(function () {
     // Shared / Customer Endpoints
     Route::get('/products', [ProductsController::class, 'apiIndex']);
     Route::get('/categories', [CategoriesController::class, 'apiIndex']);
+    Route::get('/orders', [OrdersController::class, 'apiIndex']);
     Route::post('/orders', [OrdersController::class, 'apiStore']);
+
+    // Active Offers (available to all authenticated users)
+    Route::get('/offers/active', [OffersController::class, 'apiActiveOffers']);
 
     // Auth details & logout
     Route::prefix('auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
+        Route::put('/profile', [AuthController::class, 'apiUpdateProfile']);
         Route::post('/logout', [AuthController::class, 'apiLogout']);
         Route::post('/fcm-token', [AuthController::class, 'updateFcmToken']);
     });
@@ -75,7 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/categories/{category}', [CategoriesController::class, 'apiDestroy']);
 
         // Orders Management
-        Route::get('/orders', [OrdersController::class, 'apiIndex']);
+
         Route::get('/orders/{order}', [OrdersController::class, 'apiShow']);
         Route::put('/orders/{order}', [OrdersController::class, 'apiUpdate']);
         Route::delete('/orders/{order}', [OrdersController::class, 'apiDestroy']);
@@ -110,7 +121,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/suppliers/{supplier}/transaction', [SuppliersController::class, 'apiAddTransaction']);
 
         // Settings
-        Route::get('/settings', [SettingsController::class, 'apiIndex']);
         Route::post('/settings', [SettingsController::class, 'apiUpdate']);
 
         // Statistics
@@ -120,5 +130,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Sub-Admin Management
         Route::apiResource('sub-admins', SubAdminController::class);
+
+        // Offers Management
+        Route::get('/offers', [OffersController::class, 'apiIndex']);
+        Route::post('/offers', [OffersController::class, 'apiStore']);
+        Route::put('/offers/{offer}', [OffersController::class, 'apiUpdate']);
+        Route::delete('/offers/{offer}', [OffersController::class, 'apiDestroy']);
+
+        // Regions Management
+        Route::post('/regions', [RegionsController::class, 'apiStore']);
+        Route::put('/regions/{region}', [RegionsController::class, 'apiUpdate']);
+        Route::delete('/regions/{region}', [RegionsController::class, 'apiDestroy']);
     });
 });

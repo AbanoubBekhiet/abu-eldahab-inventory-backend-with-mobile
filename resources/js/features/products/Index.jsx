@@ -4,7 +4,7 @@ import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import ProductCard from './components/ProductCard'
 import CategoryFilter from './components/CategoryFilter'
-import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download } from 'lucide-react'
+import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function ProductsIndex({ products: initialProducts, total_count: initialTotalCount, categories: initialCategories, filters: initialFilters }) {
@@ -19,6 +19,88 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const [imagePreview, setImagePreview] = useState(null)
     const [isImportOpen, setIsImportOpen] = useState(false)
     const [importFile, setImportFile] = useState(null)
+
+    // Offer Modal State
+    const [offerProduct, setOfferProduct] = useState(null)
+    const [offerFormData, setOfferFormData] = useState({
+        offer_price: '',
+        offer_max_quantity: '',
+        expires_at: '',
+    })
+    const [offerFormErrors, setOfferFormErrors] = useState({})
+
+    const setPresetDurationDays = (days) => {
+        const d = new Date()
+        d.setDate(d.getDate() + days)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const hours = String(d.getHours()).padStart(2, '0')
+        const mins = String(d.getMinutes()).padStart(2, '0')
+        setOfferFormData(prev => ({ ...prev, expires_at: `${year}-${month}-${day}T${hours}:${mins}` }))
+    }
+
+    const openOfferModal = (product) => {
+        setOfferProduct(product)
+        setOfferFormErrors({})
+        const d = new Date()
+        d.setDate(d.getDate() + 3)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const hours = String(d.getHours()).padStart(2, '0')
+        const mins = String(d.getMinutes()).padStart(2, '0')
+
+        setOfferFormData({
+            offer_price: product.price ? String(product.price) : '',
+            offer_max_quantity: product.max_app_order_quantity ? String(product.max_app_order_quantity) : '',
+            expires_at: `${year}-${month}-${day}T${hours}:${mins}`,
+        })
+    }
+
+    const offerMutation = useMutation({
+        mutationFn: async (payload) => {
+            const res = await api.post('/offers', payload)
+            return res.data
+        },
+        onSuccess: (data) => {
+            setAlert({ type: 'success', message: data.message || 'تم إضافة العرض بنجاح وإرسال إشعار للعملاء!' })
+            setOfferProduct(null)
+            setOfferFormErrors({})
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+            queryClient.invalidateQueries({ queryKey: ['offers'] })
+        },
+        onError: (err) => {
+            const errData = err.response?.data
+            const msg = errData?.message || (errData?.errors ? Object.values(errData.errors)[0]?.[0] : null) || 'حدث خطأ أثناء إضافة العرض'
+            setAlert({ type: 'error', message: msg })
+            if (errData?.errors) {
+                setOfferFormErrors(errData.errors)
+            }
+        }
+    })
+
+    const handleOfferSubmit = (e) => {
+        e.preventDefault()
+        setOfferFormErrors({})
+
+        if (!offerProduct) return
+        if (!offerFormData.offer_price || !offerFormData.expires_at) {
+            setAlert({ type: 'error', message: 'يرجى ملء سعر العرض وتاريخ الانتهاء' })
+            return
+        }
+
+        const payload = {
+            product_id: offerProduct.id,
+            offer_price: parseFloat(offerFormData.offer_price),
+            expires_at: offerFormData.expires_at.replace('T', ' '),
+        }
+        if (offerFormData.offer_max_quantity) {
+            payload.offer_max_quantity = parseInt(offerFormData.offer_max_quantity)
+        }
+
+        offerMutation.mutate(payload)
+    }
 
     const [formData, setFormData] = useState({
         name: '',
@@ -313,6 +395,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 product={product} 
                                 onEdit={openEditModal}
                                 onDelete={handleDelete}
+                                onAddOffer={openOfferModal}
                             />
                         </div>
                     ))}
@@ -374,6 +457,13 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                     <td className="px-6 py-4 text-left">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
+                                                onClick={() => openOfferModal(product)}
+                                                className="p-1.5 rounded-lg hover:bg-[#EBF5EF] text-[#7C7870] hover:text-[#2E5A44] transition-colors"
+                                                title="إضافة عرض"
+                                            >
+                                                <Tag className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => openEditModal(product)}
                                                 className="p-1.5 rounded-lg hover:bg-[#FAF9F6] text-[#7C7870] hover:text-[#2E5A44] transition-colors"
                                                 title="تعديل"
@@ -434,7 +524,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                         <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                                     </label>
                                 </div>
-                                {errors.image && <p className="text-xs text-[#C0392B] mt-1">{errors.image}</p>}
+                                {formErrors.image && <p className="text-xs text-[#C0392B] mt-1">{formErrors.image}</p>}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -832,6 +922,130 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                     style={{ backgroundColor: '#2E5A44' }}
                                 >
                                     بدء الاستيراد
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* QUICK OFFER MODAL */}
+            {offerProduct && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#FAF9F6]/70 backdrop-blur-md overflow-y-auto animate-fade-in">
+                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-md p-6 shadow-2xl relative" dir="rtl">
+                        <button
+                            onClick={() => setOfferProduct(null)}
+                            className="absolute left-6 top-6 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex items-center gap-2 mb-4">
+                            <Tag className="w-5 h-5 text-[#2E5A44]" />
+                            <h3 className="text-lg font-bold text-[#1A2D23]">إضافة عرض على المنتج</h3>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-[#EEF4F1] border border-[#ADCBBB] flex items-center gap-3 mb-5">
+                            {offerProduct.image_url ? (
+                                <img src={offerProduct.image_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                            ) : (
+                                <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-xl">📦</div>
+                            )}
+                            <div>
+                                <p className="text-sm font-bold text-[#1A2D23]">{offerProduct.name}</p>
+                                <p className="text-xs text-[#5C5950]">السعر الحالي: {offerProduct.price} ج.م</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleOfferSubmit} className="space-y-4 text-right">
+                            <div>
+                                <label className="block text-xs font-bold mb-1.5 text-[#1A2D23]">سعر العرض الجديد (ج.م) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={offerFormData.offer_price}
+                                    onChange={e => setOfferFormData(prev => ({ ...prev, offer_price: e.target.value }))}
+                                    placeholder="أدخل سعر العرض"
+                                    className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold bg-[#F4F3EF] border-[#E2E0DA] focus:outline-none focus:border-[#2E5A44]"
+                                    required
+                                />
+                                {offerFormData.offer_price && parseFloat(offerFormData.offer_price) < offerProduct.price && (
+                                    <p className="text-xs mt-1 font-bold text-[#2E5A44]">
+                                        نسبة الخصم: {Math.round((1 - parseFloat(offerFormData.offer_price) / offerProduct.price) * 100)}%
+                                    </p>
+                                )}
+                                {offerFormErrors.offer_price && (
+                                    <p className="text-xs text-red-600 mt-1">{offerFormErrors.offer_price[0]}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold mb-1.5 text-[#1A2D23]">حد الشراء (اختياري)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={offerFormData.offer_max_quantity}
+                                    onChange={e => setOfferFormData(prev => ({ ...prev, offer_max_quantity: e.target.value }))}
+                                    placeholder="مثال: 3 قطع لكل عميل"
+                                    className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium bg-[#F4F3EF] border-[#E2E0DA] focus:outline-none focus:border-[#2E5A44]"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold mb-1.5 text-[#1A2D23]">مدة العرض والتاريخ *</label>
+                                <div className="flex gap-2 mb-2">
+                                    {[
+                                        { label: 'يوم', days: 1 },
+                                        { label: '3 أيام', days: 3 },
+                                        { label: 'أسبوع', days: 7 },
+                                        { label: 'شهر', days: 30 },
+                                    ].map(b => (
+                                        <button
+                                            key={b.days}
+                                            type="button"
+                                            onClick={() => setPresetDurationDays(b.days)}
+                                            className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-[#EEF4F1] hover:border-[#2E5A44]"
+                                            style={{ backgroundColor: '#F4F3EF', borderColor: '#E2E0DA', color: '#2E5A44' }}
+                                        >
+                                            {b.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input
+                                    type="datetime-local"
+                                    value={offerFormData.expires_at}
+                                    onChange={e => setOfferFormData(prev => ({ ...prev, expires_at: e.target.value }))}
+                                    className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium bg-[#F4F3EF] border-[#E2E0DA] focus:outline-none focus:border-[#2E5A44]"
+                                    required
+                                />
+                                {offerFormErrors.expires_at && (
+                                    <p className="text-xs text-red-600 mt-1">{offerFormErrors.expires_at[0]}</p>
+                                )}
+                            </div>
+
+                            <div className="flex gap-3 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setOfferProduct(null)}
+                                    className="flex-1 py-2.5 rounded-xl border border-[#E2E0DA] text-sm font-bold text-[#5C5950] hover:bg-[#FAF9F6]"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={offerMutation.isPending}
+                                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
+                                    style={{ backgroundColor: '#2E5A44', opacity: offerMutation.isPending ? 0.7 : 1 }}
+                                >
+                                    {offerMutation.isPending ? (
+                                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                    ) : (
+                                        <>
+                                            <Tag className="w-4 h-4" />
+                                            <span>حفظ وإرسال إشعار 🚀</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

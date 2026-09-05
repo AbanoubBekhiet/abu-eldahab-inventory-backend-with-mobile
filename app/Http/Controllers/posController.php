@@ -38,7 +38,7 @@ class posController extends Controller
             $productQuery->where('category_id', $request->input('category_id'));
         }
 
-        $products = $productQuery->cursorPaginate(20)->withQueryString();
+        $products = $productQuery->paginate(30);
         $products->getCollection()->transform(function ($product) {
             $media = $product->getFirstMedia('products');
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
@@ -59,7 +59,7 @@ class posController extends Controller
         // We load items and their product info so frontend can resume them.
         $pendingCarts = PendingCart::with(['customer:id,name', 'items.product'])
             ->latest()
-            ->paginate(10, ['*'], 'page', $request->input('pending_page', 1));
+            ->get();
 
         return Inertia::render('pos/Index', [
             'customers'    => $customers,
@@ -385,7 +385,7 @@ class posController extends Controller
             $productQuery->where('category_id', $request->input('category_id'));
         }
 
-        $products = $productQuery->cursorPaginate(20)->withQueryString();
+        $products = $productQuery->paginate(30);
         $products->getCollection()->transform(function ($product) {
             $media = $product->getFirstMedia('products');
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
@@ -404,7 +404,7 @@ class posController extends Controller
 
         $pendingCarts = PendingCart::with(['customer:id,name', 'items.product'])
             ->latest()
-            ->paginate(10, ['*'], 'page', $request->input('pending_page', 1));
+            ->get();
 
         return response()->json([
             'customers'    => $customers,
@@ -624,16 +624,7 @@ class posController extends Controller
             $order->update(['profit' => $totalProfit - floatval($order->discount ?? 0)]);
             $orderLabel = '#ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
 
-            if ($request->payment_type === 'كاش') {
-                if ($creditUsed > 0) {
-                    CustomerTransaction::create([
-                        'user_id'     => $request->customer_id,
-                        'order_id'    => $order->id,
-                        'amount'      => $creditUsed,
-                        'description' => 'استهلاك رصيد دائن سابق - طلب ' . $orderLabel,
-                    ]);
-                }
-            } else {
+            if ($request->payment_type === 'آجل') {
                 CustomerTransaction::create([
                     'user_id'     => $request->customer_id,
                     'order_id'    => $order->id,

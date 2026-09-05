@@ -21,14 +21,20 @@ class AuthController extends Controller
     
     public function login(Request $request){
         $request->validate([
+            'email'    => 'required|string',
             'password' => 'required|string',
         ]);
-        $user = User::where('role', 'admin')->first();
+        
+        $user = User::where('email', $request->email)->first();
+        if (!$user && strpos($request->email, '@') === false) {
+            $user = User::where('name', $request->email)->first();
+        }
+
         if($user && Hash::check($request->password, $user->password)){
             Auth::login($user);
             return redirect()->route('dashboard')->with('success', 'تم تسجيل الدخول بنجاح');
         }
-        return redirect()->route('login')->with('error', 'كلمة المرور غير صحيحة');
+        return redirect()->route('login')->with('error', 'بيانات الدخول غير صحيحة');
     }
 
     public function logout(Request $request){
@@ -164,7 +170,7 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        $user = $request->user()->load('profile');
+        $user = $request->user()->load('profile.region');
 
         // Calculate balance (debts vs payments) from customer transactions
         $aggregates = \App\Models\CustomerTransaction::where('user_id', $user->id)
@@ -209,6 +215,7 @@ class AuthController extends Controller
                 'shop_name' => $user->profile?->shop_name,
                 'latitude'  => $user->profile?->latitude,
                 'longitude' => $user->profile?->longitude,
+                'region'    => $user->profile?->region,
             ]),
             'balance'        => $balance,
             'total_debts'    => round($totalDebts, 2),
@@ -228,7 +235,11 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user && strpos($request->email, '@') === false) {
-            $user = User::where('name', $request->email)->first();
+            $user = User::where('name', $request->email)
+                ->orWhereHas('profile', function($q) use ($request) {
+                    $q->where('phone_number', $request->email)
+                      ->orWhere('phone_number2', $request->email);
+                })->first();
         }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -236,6 +247,13 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'بيانات الدخول غير صحيحة',
             ], 401);
+        }
+
+        if ($request->boolean('for_web') && !in_array($user->role, ['admin', 'sub_admin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'عذراً، نظام الويب مخصص للمشرفين والموظفين فقط. يمكن للعملاء تسجيل الدخول عبر تطبيق الموبايل.',
+            ], 403);
         }
 
         if ($request->has('fcm_token')) {
@@ -248,8 +266,7 @@ class AuthController extends Controller
         $redirectPath = match ($user->role) {
             'admin'     => '/',
             'sub_admin' => '/pos',
-            'customer'  => '/shop',
-            default     => '/shop',
+            default     => '/',
         };
 
         return response()->json([
@@ -269,13 +286,14 @@ class AuthController extends Controller
             'name'         => 'required|string|max:100',
             'phone'        => 'nullable|string|max:30',
             'phone_number' => 'nullable|string|max:30',
-            'email'        => 'required|string|email|max:150|unique:users',
+            'email'        => 'nullable|string|email|max:150|unique:users',
             'password'     => 'required|string|min:6',
             'address'      => 'nullable|string|max:500',
             'shop_name'    => 'nullable|string|max:150',
             'latitude'     => 'nullable|numeric',
             'longitude'    => 'nullable|numeric',
             'fcm_token'    => 'nullable|string',
+            'region_id'    => 'required|exists:regions,id',
         ]);
 
         $user = User::create([
@@ -295,6 +313,7 @@ class AuthController extends Controller
             'shop_name'    => $request->shop_name ?: ($request->name . ' (عميل)'),
             'latitude'     => $request->latitude,
             'longitude'    => $request->longitude,
+            'region_id'    => $request->region_id,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -307,6 +326,57 @@ class AuthController extends Controller
             'user'          => $user->load('profile'),
             'redirect_path' => '/',
             'message'       => 'تم إنشاء الحساب بنجاح!',
+        ]);
+    }
+
+    public function apiUpdateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'name'         => 'required|string|max:100',
+            'phone'        => 'nullable|string|max:30',
+            'phone_number' => 'nullable|string|max:30',
+            'email'        => 'nullable|string|email|max:150|unique:users,email,' . $user->id,
+            'address'      => 'nullable|string|max:500',
+            'shop_name'    => 'nullable|string|max:150',
+            'latitude'     => 'nullable|numeric',
+            'longitude'    => 'nullable|numeric',
+            'region_id'    => 'nullable|exists:regions,id',
+        ]);
+
+        $user->update([
+            'name'  => $request->name,
+            'email' => $request->email,
+        ]);
+
+        $phoneNumber = $request->phone ?: $request->phone_number;
+
+        if ($user->profile) {
+            $user->profile->update([
+                'phone_number' => $phoneNumber,
+                'address'      => $request->address,
+                'shop_name'    => $request->shop_name ?: ($request->name . ' (عميل)'),
+                'latitude'     => $request->latitude,
+                'longitude'    => $request->longitude,
+                'region_id'    => $request->region_id ?: $user->profile->region_id,
+            ]);
+        } else {
+            \App\Models\Profile::create([
+                'user_id'      => $user->id,
+                'phone_number' => $phoneNumber,
+                'address'      => $request->address,
+                'shop_name'    => $request->shop_name ?: ($request->name . ' (عميل)'),
+                'latitude'     => $request->latitude,
+                'longitude'    => $request->longitude,
+                'region_id'    => $request->region_id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث الملف الشخصي بنجاح',
+            'user'    => $user->fresh('profile.region'),
         ]);
     }
 
