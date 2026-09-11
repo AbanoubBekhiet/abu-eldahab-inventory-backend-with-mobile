@@ -10,6 +10,11 @@ export const api = axios.create({
     },
 })
 
+const logoCacheBuster = Date.now()
+export const getLogoUrl = () => {
+    return `/settings-logo?t=${logoCacheBuster}`
+}
+
 // Attach Bearer token from localStorage to every API request
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('auth_token')

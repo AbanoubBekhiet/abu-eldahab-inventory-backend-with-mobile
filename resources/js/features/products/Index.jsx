@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import ProductCard from './components/ProductCard'
 import CategoryFilter from './components/CategoryFilter'
 import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag } from 'lucide-react'
-import api from '../../shared/services/api'
+import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function ProductsIndex({ products: initialProducts, total_count: initialTotalCount, categories: initialCategories, filters: initialFilters }) {
     const queryClient = useQueryClient()
@@ -115,24 +115,78 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     })
     const [formErrors, setFormErrors] = useState({})
 
-    // React Query: Fetch Products
+    // Infinite scroll page state
+    const [page, setPage] = useState(1)
+    const [allProducts, setAllProducts] = useState(() => {
+        if (initialProducts?.data) return initialProducts.data
+        if (Array.isArray(initialProducts)) return initialProducts
+        return []
+    })
+    const [hasMore, setHasMore] = useState(() => initialProducts?.next_page != null)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const loadMoreRef = useRef(null)
+
+    // Reset pagination when search or category changes
+    useEffect(() => {
+        setAllProducts([])
+        setHasMore(true)
+        setPage(1)
+    }, [search, selectedCategory])
+
+    const fetchProducts = useCallback(async (pageNum) => {
+        const res = await api.get('/products', {
+            params: {
+                search: search || undefined,
+                category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
+                page: pageNum,
+            }
+        })
+        return res.data
+    }, [search, selectedCategory])
+
+    // React Query: Fetch first page
     const { data: productsData, isLoading: isProductsLoading } = useQuery({
         queryKey: ['products', search, selectedCategory],
-        queryFn: async () => {
-            const res = await api.get('/products', {
-                params: {
-                    search: search || undefined,
-                    category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
-                }
-            })
-            return res.data
-        },
-        initialData: initialProducts ? {
+        queryFn: async () => fetchProducts(1),
+        placeholderData: (!search && selectedCategory === 'all') ? {
             products: initialProducts,
             total_count: initialTotalCount,
             categories: initialCategories,
         } : undefined,
+        staleTime: 0,
     })
+
+    // Seed allProducts on first page
+    useEffect(() => {
+        if (!productsData) return
+        const data = productsData.products?.data || []
+        setAllProducts(data)
+        setHasMore(!!productsData.products?.next_page)
+        setPage(1)
+    }, [productsData])
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isProductsLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchProducts(nextPage).then(res => {
+                        const more = res.products?.data || []
+                        setAllProducts(prev => [...prev, ...more])
+                        setHasMore(!!res.products?.next_page)
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isProductsLoading, page, fetchProducts])
 
     // React Query: Fetch Categories
     const { data: categoriesData = [] } = useQuery({
@@ -144,7 +198,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         initialData: initialCategories || undefined,
     })
 
-    const loadedProducts = productsData?.products?.data || []
+    const loadedProducts = allProducts
     const totalCount = productsData?.total_count || 0
     const categories = categoriesData.length ? categoriesData : (productsData?.categories || [])
 
@@ -430,9 +484,11 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                                     className="w-10 h-10 rounded-xl object-cover border border-[#EAE8E2]"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-xl bg-[#EEF4F1] flex items-center justify-center">
-                                                    <ImageIcon className="w-5 h-5 text-[#2E5A44]" />
-                                                </div>
+                                                <img 
+                                                    src={getLogoUrl()} 
+                                                    alt="logo" 
+                                                    className="w-10 h-10 rounded-xl object-contain p-1 border border-[#EAE8E2] opacity-40 bg-[#EEF4F1]"
+                                                />
                                             )}
                                             <span className="text-sm font-semibold text-[#1A2D23]">{product.name}</span>
                                         </div>
@@ -490,6 +546,18 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             )}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && (
+                <div ref={loadMoreRef} className="h-24 w-full flex items-center justify-center">
+                    {isLoadingMore && (
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="animate-spin w-6 h-6 border-2 border-[#2E5A44] border-t-transparent rounded-full" />
+                            <span className="text-xs font-semibold text-[#7C7870]">جاري تحميل المزيد...</span>
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\posController;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,7 +20,9 @@ Route::prefix('auth')->group(function () {
     Route::get('/login', fn () => Inertia::render('auth/login'))->name('auth.login');
     Route::get('/register', fn () => Inertia::render('auth/register'))->name('auth.register');
     Route::get('/reset-password', fn () => Inertia::render('auth/reset_password'))->name('reset-password');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('reset-password.post');
     Route::get('/verify-reset-code', fn () => Inertia::render('auth/verify_reset_code'))->name('verify-reset-code');
+    Route::post('/verify-reset-code', [AuthController::class, 'verifyResetCode'])->name('verify-reset-code.post');
 });
 
 // App Feature Pages

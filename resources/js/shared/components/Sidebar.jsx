@@ -31,7 +31,7 @@ const navItems = [
     { name: 'الموردين',    icon: Truck,           href: '/suppliers' },
     { name: 'حسابات الموردين', icon: Building2, href: '/suppliers-accounts' },
     { name: 'إدارة الموظفين', icon: ShieldCheck,   href: '/sub-admins', adminOnly: true },
-    { name: 'الإحصائيات',  icon: BarChart3,       href: '/statistics' },
+    { name: 'الإحصائيات',  icon: BarChart3,       href: '/statistics', adminOnly: true },
     { name: 'العروض',      icon: Tag,             href: '/offers' },
     { name: 'المناطق',     icon: MapPin,          href: '/regions' },
     { name: 'الإعدادات',   icon: Settings,        href: '/settings', adminOnly: true },

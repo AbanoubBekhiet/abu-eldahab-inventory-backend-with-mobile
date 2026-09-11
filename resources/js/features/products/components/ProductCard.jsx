@@ -1,10 +1,12 @@
 import { Badge } from '../../../shared/components'
 import { Edit2, Trash2, Tag } from 'lucide-react'
+import { getLogoUrl } from '../../../shared/services/api'
 
 export default function ProductCard({ product, onAddToCart, onEdit, onDelete, onAddOffer }) {
     return (
         <div
-            className="rounded-2xl overflow-hidden group transition-all duration-300 hover:shadow-lg text-right"
+            className="rounded-2xl overflow-hidden group transition-all duration-300 hover:shadow-lg text-right cursor-pointer"
+            onClick={() => onEdit?.(product)}
             style={{ backgroundColor: '#FFFFFF', border: '1px solid #EAE8E2' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#ADCBBB'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#EAE8E2'}
@@ -20,12 +22,11 @@ export default function ProductCard({ product, onAddToCart, onEdit, onDelete, on
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                     ) : (
-                        <div
-                            className="w-20 h-20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500"
-                            style={{ backgroundColor: '#EEF4F1' }}
-                        >
-                            <span className="text-3xl">📦</span>
-                        </div>
+                        <img
+                            src={getLogoUrl()}
+                            alt="logo"
+                            className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
+                        />
                     )}
                 </div>
 

@@ -116,21 +116,36 @@ class AuthController extends Controller
             ]
         );
         
-        // Send OTP email
-        \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $token) {
-            $message->to($user->email)
-                    ->subject('رمز التحقق لإعادة تعيين كلمة المرور')
-                    ->html("
-                        <div style='direction: rtl; text-align: right; font-family: sans-serif; padding: 20px; border: 1px solid #EAE8E2; border-radius: 12px; max-width: 500px; margin: auto;'>
-                            <h2 style='color: #2E5A44;'>إعادة تعيين كلمة المرور</h2>
-                            <p style='color: #5C5950;'>لقد طلبت رمز تحقق لإعادة تعيين كلمة المرور الخاصة بك. يرجى استخدام الرمز التالي لإتمام العملية:</p>
-                            <div style='text-align: center; margin: 30px 0;'>
-                                <span style='background-color: #FAF9F6; border: 2px dashed #ADCBBB; color: #2E5A44; font-size: 24px; font-weight: bold; padding: 10px 25px; letter-spacing: 5px; border-radius: 8px;'>{$token}</span>
-                            </div>
-                            <p style='color: #9A978F; font-size: 12px;'>إذا لم تطلب هذا الرمز، يمكنك تجاهل هذا البريد الإلكتروني بأمان.</p>
-                        </div>
-                    ");
-        });
+        // Send OTP email using Hostinger SDK
+        try {
+            $config = \Hostinger\Configuration::getDefaultConfiguration()->setAccessToken(env('HOSTINGER_MAIL_API_TOKEN'));
+            $accountApi = new \Hostinger\Api\AccountApi(config: $config);
+            $account = $accountApi->getCurrentAccount();
+            $mailboxResourceId = $account->getData()->getMailboxes()[0]->getResourceId();
+            
+            $sendApi = new \Hostinger\Api\SendApi(config: $config);
+            $sendRequest = new \Hostinger\Model\V1SendRequest();
+            $sendRequest->setTo([$user->email]);
+            $sendRequest->setSubject('رمز التحقق لإعادة تعيين كلمة المرور');
+            
+            $html = "
+                <div style='direction: rtl; text-align: right; font-family: sans-serif; padding: 20px; border: 1px solid #EAE8E2; border-radius: 12px; max-width: 500px; margin: auto;'>
+                    <h2 style='color: #2E5A44;'>إعادة تعيين كلمة المرور</h2>
+                    <p style='color: #5C5950;'>لقد طلبت رمز تحقق لإعادة تعيين كلمة المرور الخاصة بك. يرجى استخدام الرمز التالي لإتمام العملية:</p>
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <span style='background-color: #FAF9F6; border: 2px dashed #ADCBBB; color: #2E5A44; font-size: 24px; font-weight: bold; padding: 10px 25px; letter-spacing: 5px; border-radius: 8px;'>{$token}</span>
+                    </div>
+                    <p style='color: #9A978F; font-size: 12px;'>إذا لم تطلب هذا الرمز، يمكنك تجاهل هذا البريد الإلكتروني بأمان.</p>
+                </div>
+            ";
+            
+            $sendRequest->setHtml($html);
+            $sendApi->sendEmail($mailboxResourceId, $sendRequest);
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Hostinger Mail API Error: ' . $e->getMessage());
+            return redirect()->route('reset-password')->with('error', 'حدث خطأ أثناء إرسال البريد الإلكتروني. يرجى المحاولة لاحقاً.');
+        }
         
         return redirect()->route('verify-reset-code')->with('success', 'تم إرسال رمز التحقق إلى بريدك الالكتروني بنجاح.');
     }
@@ -265,7 +280,7 @@ class AuthController extends Controller
 
         $redirectPath = match ($user->role) {
             'admin'     => '/',
-            'sub_admin' => '/pos',
+            'sub_admin' => '/',
             default     => '/',
         };
 
@@ -488,20 +503,34 @@ class AuthController extends Controller
         );
 
         try {
-            \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($user, $token) {
-                $message->to($user->email)
-                        ->subject('رمز التحقق لإعادة تعيين كلمة المرور')
-                        ->html("
-                            <div style='direction: rtl; text-align: right; font-family: sans-serif; padding: 20px; border: 1px solid #EAE8E2; border-radius: 12px; max-width: 500px; margin: auto;'>
-                                <h2 style='color: #2E5A44;'>إعادة تعيين كلمة المرور</h2>
-                                <p style='color: #5C5950;'>لقد طلبت رمز تحقق لإعادة تعيين كلمة المرور الخاصة بك:</p>
-                                <div style='text-align: center; margin: 30px 0;'>
-                                    <span style='background-color: #FAF9F6; border: 2px dashed #ADCBBB; color: #2E5A44; font-size: 24px; font-weight: bold; padding: 10px 25px; letter-spacing: 5px; border-radius: 8px;'>{$token}</span>
-                                </div>
-                            </div>
-                        ");
-            });
+            $config = \Hostinger\Configuration::getDefaultConfiguration()->setAccessToken(env('HOSTINGER_MAIL_API_TOKEN'));
+            $accountApi = new \Hostinger\Api\AccountApi(config: $config);
+            $account = $accountApi->getCurrentAccount();
+            $mailboxResourceId = $account->getData()->getMailboxes()[0]->getResourceId();
+            
+            $sendApi = new \Hostinger\Api\SendApi(config: $config);
+            $sendRequest = new \Hostinger\Model\V1SendRequest();
+            $sendRequest->setTo([$user->email]);
+            $sendRequest->setSubject('رمز التحقق لإعادة تعيين كلمة المرور');
+            
+            $html = "
+                <div style='direction: rtl; text-align: right; font-family: sans-serif; padding: 20px; border: 1px solid #EAE8E2; border-radius: 12px; max-width: 500px; margin: auto;'>
+                    <h2 style='color: #2E5A44;'>إعادة تعيين كلمة المرور</h2>
+                    <p style='color: #5C5950;'>لقد طلبت رمز تحقق لإعادة تعيين كلمة المرور الخاصة بك:</p>
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <span style='background-color: #FAF9F6; border: 2px dashed #ADCBBB; color: #2E5A44; font-size: 24px; font-weight: bold; padding: 10px 25px; letter-spacing: 5px; border-radius: 8px;'>{$token}</span>
+                    </div>
+                </div>
+            ";
+            
+            $sendRequest->setHtml($html);
+            $sendApi->sendEmail($mailboxResourceId, $sendRequest);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Hostinger Mail API Error (Mobile): ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إرسال البريد الإلكتروني. يرجى المحاولة لاحقاً.',
+            ], 500);
         }
 
         return response()->json([

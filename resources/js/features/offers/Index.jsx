@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import { Plus, Trash2, X, Tag, Clock, Package, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
-import api from '../../shared/services/api'
+import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function OffersIndex() {
     const queryClient = useQueryClient()
@@ -234,7 +234,7 @@ export default function OffersIndex() {
                                         {offer.product_image_url ? (
                                             <img src={offer.product_image_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <Package className="w-6 h-6 text-gray-400" />
+                                            <img src={getLogoUrl()} alt="logo" className="w-full h-full object-contain p-2 opacity-40 bg-[#EEF4F1]" />
                                         )}
                                     </div>
                                     <div>
@@ -310,7 +310,7 @@ export default function OffersIndex() {
                                                 {selectedProduct.image_url ? (
                                                     <img src={selectedProduct.image_url} alt="" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <Package className="w-5 h-5 text-gray-400" />
+                                                    <img src={getLogoUrl()} alt="logo" className="w-full h-full object-contain p-2 opacity-40 bg-[#EEF4F1]" />
                                                 )}
                                             </div>
                                         </div>
@@ -343,7 +343,7 @@ export default function OffersIndex() {
                                                             {p.image_url ? (
                                                                 <img src={p.image_url} alt="" className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <Package className="w-4 h-4 text-gray-400" />
+                                                                <img src={getLogoUrl()} alt="logo" className="w-full h-full object-contain p-2 opacity-40 bg-[#EEF4F1]" />
                                                             )}
                                                         </div>
                                                     </button>

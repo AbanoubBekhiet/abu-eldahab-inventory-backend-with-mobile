@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput } from '../../shared/components'
 import { Plus, Edit2, Trash2, X, Image as ImageIcon, UploadCloud } from 'lucide-react'
-import api from '../../shared/services/api'
+import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function CategoriesIndex({ categories: initialCategories, filters: initialFilters }) {
     const queryClient = useQueryClient()
@@ -193,9 +193,11 @@ export default function CategoriesIndex({ categories: initialCategories, filters
                                             className="w-14 h-14 rounded-xl object-cover border border-[#EAE8E2]"
                                         />
                                     ) : (
-                                        <div className="w-14 h-14 rounded-xl bg-[#FAF9F6] border border-[#EAE8E2] flex items-center justify-center text-2xl text-[#9A978F]">
-                                            <ImageIcon className="w-6 h-6" />
-                                        </div>
+                                        <img
+                                            src={getLogoUrl()}
+                                            alt="logo"
+                                            className="w-14 h-14 rounded-xl object-contain p-1 border border-[#EAE8E2] opacity-40 bg-[#FAF9F6]"
+                                        />
                                     )}
                                     <div>
                                         <h4 className="text-sm font-bold text-[#1A2D23]">{cat.name}</h4>
