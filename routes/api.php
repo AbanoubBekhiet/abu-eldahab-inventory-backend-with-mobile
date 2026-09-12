@@ -12,6 +12,8 @@ use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\OffersController;
+use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\CustomerCartController;
 
 use App\Http\Controllers\SubAdminController;
 
@@ -49,6 +51,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Active Offers (available to all authenticated users)
     Route::get('/offers/active', [OffersController::class, 'apiActiveOffers']);
+
+    // Customer Wishlist
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
+
+    // Customer Cart
+    Route::get('/cart', [CustomerCartController::class, 'index']);
+    Route::post('/cart', [CustomerCartController::class, 'store']);
+    Route::put('/cart/{product_id}', [CustomerCartController::class, 'update']);
+    Route::delete('/cart/clear', [CustomerCartController::class, 'clear']);
+    Route::delete('/cart/{product_id}', [CustomerCartController::class, 'destroy']);
 
     // Auth details & logout
     Route::prefix('auth')->group(function () {

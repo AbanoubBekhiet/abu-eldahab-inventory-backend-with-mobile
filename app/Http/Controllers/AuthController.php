@@ -333,6 +333,32 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Notify admins and sub-admins about the new customer
+        try {
+            $adminTokens = \App\Models\User::whereIn('role', ['admin', 'sub_admin'])
+                ->whereNotNull('fcm_token')
+                ->where('fcm_token', '!=', '')
+                ->pluck('fcm_token')
+                ->toArray();
+
+            if (!empty($adminTokens)) {
+                $title = "تسجيل عميل جديد";
+                $body = "قام العميل {$user->name} بتسجيل حساب جديد.";
+
+                \App\Services\FcmService::sendToMultiple(
+                    $adminTokens,
+                    $title,
+                    $body,
+                    [
+                        'type' => 'new_customer',
+                        'user_id' => (string) $user->id,
+                    ]
+                );
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to notify admins about new customer: " . $e->getMessage());
+        }
+
         return response()->json([
             'success'       => true,
             'token'         => $token,
