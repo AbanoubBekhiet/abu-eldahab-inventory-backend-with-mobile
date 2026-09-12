@@ -119,6 +119,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/customers/{customer}/account', [CustomersController::class, 'apiAccountDetails']);
         Route::post('/customers/{customer}/transaction', [CustomersController::class, 'apiAddTransaction']);
 
+        // App Users (Admin View)
+        Route::get('/app-users', [CustomersController::class, 'apiAppUsersIndex']);
+        Route::get('/app-users/{user}/orders', [CustomersController::class, 'apiCustomerOrders']);
+        Route::get('/app-users/{user}/cart', [CustomersController::class, 'apiAppUserCart']);
+        Route::get('/app-users/{user}/wishlist', [CustomersController::class, 'apiAppUserWishlist']);
+
         // Suppliers & Supplier Accounts
         Route::get('/suppliers', [SuppliersController::class, 'apiIndex']);
         Route::post('/suppliers', [SuppliersController::class, 'apiStore']);

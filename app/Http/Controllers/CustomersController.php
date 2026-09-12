@@ -1047,4 +1047,108 @@ class CustomersController extends Controller
             return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء تسجيل المعاملة'], 500);
         }
     }
+
+    // --- App Users (Admin Mobile App Features) ---
+
+    public function apiAppUsersIndex(Request $request)
+    {
+        $search = $request->input('search');
+
+        $query = User::where('role', 'customer')
+            ->whereNotNull('password') // registered from app
+            ->with(['profile.region']);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhereHas('profile', function($pq) use ($search) {
+                      $pq->where('phone_number', 'like', '%' . $search . '%')
+                        ->orWhere('shop_name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $paginator = $query->latest()->simplePaginate(15);
+
+        $users = collect($paginator->items())->map(function($user) {
+            return [
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'phone'      => $user->profile?->phone_number ?? '—',
+                'shop_name'  => $user->profile?->shop_name ?? '—',
+                'address'    => $user->profile?->address ?? '—',
+                'region'     => $user->profile?->region?->name ?? '—',
+                'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i') : '—',
+            ];
+        });
+
+        return response()->json([
+            'users' => [
+                'data'         => $users,
+                'next_page'    => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+                'current_page' => $paginator->currentPage(),
+            ],
+        ]);
+    }
+
+    public function apiAppUserCart(Request $request, $id)
+    {
+        $paginator = \App\Models\CustomerCart::with('product')
+            ->where('user_id', $id)
+            ->latest()
+            ->simplePaginate(15);
+
+        $items = collect($paginator->items())->map(function($cart) {
+            $product = $cart->product;
+            if (!$product) return null;
+            
+            return [
+                'id'                     => $product->id,
+                'name'                   => $product->name,
+                'price'                  => floatval($product->offer_price > 0 ? $product->offer_price : $product->selling_price),
+                'image_url'              => $product->image_url,
+                'unit'                   => $product->unit,
+                'quantity'               => $cart->quantity,
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'cart' => [
+                'data'         => $items,
+                'next_page'    => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+                'current_page' => $paginator->currentPage(),
+            ],
+        ]);
+    }
+
+    public function apiAppUserWishlist(Request $request, $id)
+    {
+        $paginator = \App\Models\Wishlist::with('product')
+            ->where('user_id', $id)
+            ->latest()
+            ->simplePaginate(15);
+
+        $items = collect($paginator->items())->map(function($wishlist) {
+            $product = $wishlist->product;
+            if (!$product) return null;
+
+            return [
+                'id'                     => $product->id,
+                'name'                   => $product->name,
+                'price'                  => floatval($product->offer_price > 0 ? $product->offer_price : $product->selling_price),
+                'image_url'              => $product->image_url,
+                'unit'                   => $product->unit,
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'wishlist' => [
+                'data'         => $items,
+                'next_page'    => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+                'current_page' => $paginator->currentPage(),
+            ],
+        ]);
+    }
 }
