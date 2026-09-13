@@ -18,7 +18,6 @@ class OrderObserver
         'processing' => 'جاري التحضير',
         'shipped'    => 'تم الشحن',
         'delivered'  => 'تم التوصيل',
-        'completed'  => 'مكتمل',
         'cancelled'  => 'ملغي',
     ];
 

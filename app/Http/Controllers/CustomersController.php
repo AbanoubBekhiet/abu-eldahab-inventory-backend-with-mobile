@@ -594,6 +594,9 @@ class CustomersController extends Controller
                 'phone'     => $user->profile?->phone_number ?? '—',
                 'shop_name' => $user->profile?->shop_name ?? '—',
                 'address'   => $user->profile?->address ?? '—',
+                'region'    => $user->profile?->region?->name ?? '—',
+                'latitude'  => $user->profile?->latitude,
+                'longitude' => $user->profile?->longitude,
             ],
             'transactions' => [
                 'data'         => $transactions,
@@ -815,9 +818,12 @@ class CustomersController extends Controller
                 'products'      => $order->products->map(function ($product) use ($returnedMap) {
                     $orderedQty  = $product->pivot->quantity;
                     $returnedQty = $returnedMap->get($product->id, 0);
+                    $media = $product->getFirstMedia('products');
+                    $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
                     return [
                         'id'           => $product->id,
                         'name'         => $product->name,
+                        'image_url'    => $imageUrl,
                         'unit'         => $product->unit ?? '',
                         'quantity'     => $orderedQty,
                         'price'        => floatval($product->pivot->price),
@@ -845,6 +851,8 @@ class CustomersController extends Controller
                 'phone'     => $user->profile?->phone_number ?? '—',
                 'address'   => $user->profile?->address ?? '—',
                 'shop_name' => $user->profile?->shop_name ?? '—',
+                'latitude'  => $user->profile?->latitude,
+                'longitude' => $user->profile?->longitude,
             ],
             'orders' => [
                 'data'         => $orders,
@@ -1080,6 +1088,8 @@ class CustomersController extends Controller
                 'shop_name'  => $user->profile?->shop_name ?? '—',
                 'address'    => $user->profile?->address ?? '—',
                 'region'     => $user->profile?->region?->name ?? '—',
+                'latitude'   => $user->profile?->latitude,
+                'longitude'  => $user->profile?->longitude,
                 'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i') : '—',
             ];
         });
@@ -1104,11 +1114,17 @@ class CustomersController extends Controller
             $product = $cart->product;
             if (!$product) return null;
             
+            $offer = $product->activeOffer;
+            $price = $offer ? $offer->offer_price : $product->price;
+
+            $media = $product->getFirstMedia('products');
+            $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+            
             return [
                 'id'                     => $product->id,
                 'name'                   => $product->name,
-                'price'                  => floatval($product->offer_price > 0 ? $product->offer_price : $product->selling_price),
-                'image_url'              => $product->image_url,
+                'price'                  => floatval($price),
+                'image_url'              => $imageUrl,
                 'unit'                   => $product->unit,
                 'quantity'               => $cart->quantity,
             ];
@@ -1123,6 +1139,18 @@ class CustomersController extends Controller
         ]);
     }
 
+    public function apiAppUserCartDelete(Request $request, $id, $productId)
+    {
+        $deleted = \App\Models\CustomerCart::where('user_id', $id)
+            ->where('product_id', $productId)
+            ->delete();
+
+        if ($deleted) {
+            return response()->json(['success' => true, 'message' => 'تم حذف المنتج من السلة بنجاح']);
+        }
+        return response()->json(['success' => false, 'message' => 'لم يتم العثور على المنتج في السلة'], 404);
+    }
+
     public function apiAppUserWishlist(Request $request, $id)
     {
         $paginator = \App\Models\Wishlist::with('product')
@@ -1134,11 +1162,17 @@ class CustomersController extends Controller
             $product = $wishlist->product;
             if (!$product) return null;
 
+            $offer = $product->activeOffer;
+            $price = $offer ? $offer->offer_price : $product->price;
+
+            $media = $product->getFirstMedia('products');
+            $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+
             return [
                 'id'                     => $product->id,
                 'name'                   => $product->name,
-                'price'                  => floatval($product->offer_price > 0 ? $product->offer_price : $product->selling_price),
-                'image_url'              => $product->image_url,
+                'price'                  => floatval($price),
+                'image_url'              => $imageUrl,
                 'unit'                   => $product->unit,
             ];
         })->filter()->values();

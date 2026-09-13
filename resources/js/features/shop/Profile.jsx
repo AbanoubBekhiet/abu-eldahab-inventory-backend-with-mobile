@@ -128,7 +128,7 @@ export default function ShopProfile() {
                                                     <span className="text-xs text-[#9A978F] block mt-0.5">{ord.created_at || 'مؤخراً'}</span>
                                                 </div>
                                                 <span className="px-3 py-1 rounded-xl text-xs font-bold bg-[#EBF5EF] text-[#2E5A44]">
-                                                    {ord.status || 'مكتمل'}
+                                                    {ord.status || 'قيد الانتظار'}
                                                 </span>
                                             </div>
 

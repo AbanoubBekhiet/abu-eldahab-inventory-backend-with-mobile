@@ -123,6 +123,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/app-users', [CustomersController::class, 'apiAppUsersIndex']);
         Route::get('/app-users/{user}/orders', [CustomersController::class, 'apiCustomerOrders']);
         Route::get('/app-users/{user}/cart', [CustomersController::class, 'apiAppUserCart']);
+        Route::delete('/app-users/{user}/cart/{product}', [CustomersController::class, 'apiAppUserCartDelete']);
         Route::get('/app-users/{user}/wishlist', [CustomersController::class, 'apiAppUserWishlist']);
 
         // Suppliers & Supplier Accounts

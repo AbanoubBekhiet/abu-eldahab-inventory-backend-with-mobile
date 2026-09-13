@@ -146,10 +146,17 @@ export default function AccountDetails({ customer: initialCustomer, transactions
                                         </span>
                                     )}
                                     {customer.address !== '—' && (
-                                        <span className="flex items-center gap-1">
-                                            <MapPin className="w-3.5 h-3.5" />
-                                            {customer.address}
-                                        </span>
+                                        <div className="flex items-start gap-2">
+                                            <MapPin className="w-4 h-4 text-[#9A978F] mt-0.5" />
+                                            <a 
+                                                href={customer.latitude && customer.longitude ? `https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.address)}`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-sm font-medium text-[#7C7870] flex-1 hover:text-[#0066CC] hover:underline transition-colors"
+                                            >
+                                                {customer.region !== '—' ? `${customer.region} - ${customer.address}` : customer.address}
+                                            </a>
+                                        </div>
                                     )}
                                 </div>
                             </div>
