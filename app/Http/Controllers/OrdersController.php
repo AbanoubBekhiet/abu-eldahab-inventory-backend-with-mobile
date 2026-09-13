@@ -199,6 +199,16 @@ class OrdersController extends Controller
                 'profit'        => $newProfit,
             ]);
 
+            if ($order->user_id && $totalRefund > 0) {
+                $orderLabel = '#ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
+                \App\Models\CustomerTransaction::create([
+                    'user_id'     => $order->user_id,
+                    'order_id'    => $order->id,
+                    'amount'      => -$totalRefund, // Negative for refund (reduces debt)
+                    'description' => "استرجاع منتجات من الطلب {$orderLabel} - استرداد بقيمة " . number_format($totalRefund, 2) . ' ج.م',
+                ]);
+            }
+
             DB::commit();
             session()->flash('success', 'تم تسجيل المرتجع بنجاح. مبلغ الاسترداد: ' . number_format($totalRefund, 2) . ' ج.م');
         } catch (\Exception $e) {
@@ -521,6 +531,16 @@ class OrdersController extends Controller
                 'profit'        => $newProfit,
             ]);
 
+            if ($order->user_id && $totalRefund > 0) {
+                $orderLabel = '#ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
+                \App\Models\CustomerTransaction::create([
+                    'user_id'     => $order->user_id,
+                    'order_id'    => $order->id,
+                    'amount'      => -$totalRefund, // Negative for refund (reduces debt)
+                    'description' => "استرجاع منتجات من الطلب {$orderLabel} - استرداد بقيمة " . number_format($totalRefund, 2) . ' ج.م',
+                ]);
+            }
+
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -563,7 +583,7 @@ class OrdersController extends Controller
 
                 // Validate stock & max_app_order_quantity first
                 foreach ($request->items as $item) {
-                    $product = Product::findOrFail($item['product_id']);
+                    $product = Product::where('id', $item['product_id'])->lockForUpdate()->firstOrFail();
                     $qty = intval($item['quantity']);
 
                     // Only enforce max_app_order_quantity for customers
@@ -586,7 +606,7 @@ class OrdersController extends Controller
                     if ($product->stock < $qty) {
                         return response()->json([
                             'success' => false,
-                            'message' => "الكمية المطلوبة من المنتج '{$product->name}' غير متوفرة بالمخزن"
+                            'message' => "الكمية المطلوبة من المنتج '{$product->name}' غير متوفرة بالمخزن، المتاح فقط {$product->stock}"
                         ], 422);
                     }
 
@@ -653,6 +673,9 @@ class OrdersController extends Controller
 
                     // Deduct stock
                     $product->decrement('stock', $qty);
+                    if ($product->stock <= 0) {
+                        \App\Models\Product::where('id', $product->id)->update(['is_available_on_app' => false]);
+                    }
                 }
 
                 // Record the order total as a debt (ديون) in customer transactions

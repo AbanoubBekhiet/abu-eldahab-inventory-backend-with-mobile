@@ -10,6 +10,15 @@ class Product extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    protected static function booted()
+    {
+        static::saving(function ($product) {
+            if ($product->stock <= 0) {
+                $product->is_available_on_app = false;
+            }
+        });
+    }
+
     protected $fillable = [
         'name',
         'price',

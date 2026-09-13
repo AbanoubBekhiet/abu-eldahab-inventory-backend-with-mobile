@@ -196,7 +196,7 @@ export default function CategoriesIndex({ categories: initialCategories, filters
                                         <img
                                             src={getLogoUrl()}
                                             alt="logo"
-                                            className="w-14 h-14 rounded-xl object-contain p-1 border border-[#EAE8E2] opacity-40 bg-[#FAF9F6]"
+                                            className="w-14 h-14 rounded-xl object-contain border border-[#EAE8E2]"
                                         />
                                     )}
                                     <div>

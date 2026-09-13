@@ -73,7 +73,7 @@ export default function OffersIndex() {
             return res.data
         },
         onSuccess: (data) => {
-            setAlert({ type: 'success', message: data.message || 'تم إلغاء العرض بنجاح!' })
+            setAlert({ type: 'success', message: data.message || 'تم حذف العرض بنجاح!' })
             queryClient.invalidateQueries({ queryKey: ['offers'] })
             queryClient.invalidateQueries({ queryKey: ['products'] })
         },
@@ -213,19 +213,17 @@ export default function OffersIndex() {
                                         {isActive ? 'فعال' : isExpired ? 'منتهي' : 'ملغي'}
                                     </div>
 
-                                    {isActive && (
-                                        <button
-                                            onClick={() => {
-                                                if (confirm('هل أنت متأكد من إلغاء هذا العرض؟ سيتم استعادة السعر الأصلي.')) {
-                                                    deleteMutation.mutate(offer.id)
-                                                }
-                                            }}
-                                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
-                                            title="إلغاء العرض"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('هل أنت متأكد من حذف هذا العرض نهائياً؟')) {
+                                                deleteMutation.mutate(offer.id)
+                                            }
+                                        }}
+                                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                                        title="حذف العرض"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
 
                                 {/* Product Info */}

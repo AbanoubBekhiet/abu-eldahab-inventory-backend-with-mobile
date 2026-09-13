@@ -88,6 +88,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Products Management
         Route::post('/products', [ProductsController::class, 'apiStore']);
+        Route::post('/products/export', [ProductsController::class, 'exportExcel']);
+        Route::post('/products/print', [ProductsController::class, 'printView']);
         Route::post('/products/import', [ProductsController::class, 'apiImport']);
         Route::match(['put', 'post'], '/products/{product}', [ProductsController::class, 'apiUpdate']);
         Route::delete('/products/{product}', [ProductsController::class, 'apiDestroy']);

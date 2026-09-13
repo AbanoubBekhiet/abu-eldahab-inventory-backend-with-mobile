@@ -165,11 +165,11 @@ class OffersController extends Controller
             ]);
         }
 
-        $offer->update(['is_active' => false]);
+        $offer->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إلغاء العرض واستعادة السعر الأصلي بنجاح!',
+            'message' => 'تم حذف العرض بنجاح واستعادة السعر الأصلي!',
         ]);
     }
 

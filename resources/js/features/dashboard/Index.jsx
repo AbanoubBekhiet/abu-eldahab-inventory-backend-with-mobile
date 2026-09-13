@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
-import RecentOrders from './components/RecentOrders'
 import TopProducts from './components/TopProducts'
 import SalesChart from './components/SalesChart'
 import api from '../../shared/services/api'
@@ -43,8 +42,6 @@ export default function DashboardIndex({
                         <TopProducts topProducts={topProducts} />
                     </div>
 
-                    {/* Recent Orders */}
-                    <RecentOrders recentOrders={recentOrders} />
                 </>
             )}
         </AppLayout>

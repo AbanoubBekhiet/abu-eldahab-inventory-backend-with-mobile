@@ -4,7 +4,7 @@ import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import ProductCard from './components/ProductCard'
 import CategoryFilter from './components/CategoryFilter'
-import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag } from 'lucide-react'
+import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag, Printer } from 'lucide-react'
 import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function ProductsIndex({ products: initialProducts, total_count: initialTotalCount, categories: initialCategories, filters: initialFilters }) {
@@ -114,6 +114,9 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         image: null,
     })
     const [formErrors, setFormErrors] = useState({})
+
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+    const [exportSelectedCategories, setExportSelectedCategories] = useState([])
 
     // Infinite scroll page state
     const [page, setPage] = useState(1)
@@ -375,6 +378,55 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         document.body.removeChild(link)
     }
 
+    const handleExportExcel = async () => {
+        try {
+            const res = await api.post('/products/export', {
+                category_ids: exportSelectedCategories
+            }, { responseType: 'blob' })
+            
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', 'products-report.xlsx')
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            setIsExportModalOpen(false)
+        } catch (e) {
+            setAlert({ type: 'error', message: 'حدث خطأ أثناء تصدير الملف' })
+        }
+    }
+
+    const handlePrintPDF = async () => {
+        try {
+            const res = await api.post('/products/print', {
+                category_ids: exportSelectedCategories
+            })
+            
+            const printWindow = window.open('', '_blank')
+            printWindow.document.write(res.data)
+            printWindow.document.close()
+            setIsExportModalOpen(false)
+        } catch (e) {
+            setAlert({ type: 'error', message: 'حدث خطأ أثناء فتح شاشة الطباعة' })
+        }
+    }
+
+    const toggleExportCategory = (id) => {
+        setExportSelectedCategories(prev => {
+            if (id === 'all') {
+                return ['all']
+            }
+            const withoutAll = prev.filter(c => c !== 'all')
+            if (withoutAll.includes(id)) {
+                const newArr = withoutAll.filter(c => c !== id)
+                return newArr.length === 0 ? ['all'] : newArr
+            } else {
+                return [...withoutAll, id]
+            }
+        })
+    }
+
     return (
         <AppLayout title="المنتجات" subtitle={`إجمالي ${totalCount || loadedProducts.length} منتج متوفر`}>
             {/* Status/Flash Alerts */}
@@ -435,6 +487,16 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                     >
                         <UploadCloud className="w-4 h-4" />
                         استيراد من إكسل (CSV)
+                    </button>
+                    <button
+                        onClick={() => {
+                            setExportSelectedCategories(['all']);
+                            setIsExportModalOpen(true);
+                        }}
+                        className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <Printer className="w-4 h-4" />
+                        تصدير / طباعة
                     </button>
                     <Button icon={Plus} onClick={openAddModal}>إضافة منتج</Button>
                 </div>
@@ -558,6 +620,62 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             <span className="text-xs font-semibold text-[#7C7870]">جاري تحميل المزيد...</span>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* EXPORT MODAL */}
+            {isExportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#FAF9F6]/70 backdrop-blur-md overflow-y-auto animate-fade-in">
+                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-md p-6 sm:p-8 shadow-2xl relative">
+                        <button
+                            onClick={() => setIsExportModalOpen(false)}
+                            className="absolute left-6 top-6 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <h3 className="text-lg font-bold text-[#1A2D23] mb-6 text-right">تصدير وطباعة المنتجات</h3>
+                        <p className="text-sm font-semibold text-[#5C5950] text-right mb-4">اختر التصنيفات المراد تصدير منتجاتها:</p>
+
+                        <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2" dir="rtl">
+                            <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
+                                    checked={exportSelectedCategories.includes('all')}
+                                    onChange={() => toggleExportCategory('all')}
+                                />
+                                <span className="text-sm font-semibold">كل المنتجات</span>
+                            </label>
+
+                            {categories.map(c => (
+                                <label key={c.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
+                                        checked={exportSelectedCategories.includes(c.id)}
+                                        onChange={() => toggleExportCategory(c.id)}
+                                    />
+                                    <span className="text-sm font-semibold">{c.name}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3 mt-8">
+                            <button
+                                onClick={handleExportExcel}
+                                className="flex-1 py-3.5 rounded-xl font-bold text-sm text-[#2E5A44] bg-[#EBF5EF] hover:bg-[#D7EBE1] transition-all"
+                            >
+                                تحميل كـ Excel
+                            </button>
+                            <button
+                                onClick={handlePrintPDF}
+                                className="flex-1 py-3.5 rounded-xl font-bold text-sm text-white bg-[#2E5A44] hover:bg-[#234735] transition-all"
+                            >
+                                طباعة / PDF
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

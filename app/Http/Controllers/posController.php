@@ -284,6 +284,9 @@ class posController extends Controller
 
                 // Deduct stock
                 $product->decrement('stock', $item['quantity']);
+                if ($product->stock <= 0) {
+                    \App\Models\Product::where('id', $product->id)->update(['is_available_on_app' => false]);
+                }
 
                 $totalProfit += ($item['price'] - floatval($product->cost_price)) * $item['quantity'];
 
@@ -609,6 +612,9 @@ class posController extends Controller
                 ]);
 
                 $product->decrement('stock', $item['quantity']);
+                if ($product->stock <= 0) {
+                    \App\Models\Product::where('id', $product->id)->update(['is_available_on_app' => false]);
+                }
                 $totalProfit += ($item['price'] - floatval($product->cost_price)) * $item['quantity'];
 
                 $receiptItems[] = [

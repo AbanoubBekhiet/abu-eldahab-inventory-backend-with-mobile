@@ -317,7 +317,13 @@ class SuppliersController extends Controller
 
                 $product = Product::find($item['product_id']);
                 $product->increment('stock', $item['quantity']);
-                $product->update(['cost_price' => $item['price']]);
+                
+                $updateData = ['cost_price' => $item['price']];
+                if ($product->stock > 0 && !$product->is_available_on_app) {
+                    $updateData['is_available_on_app'] = true;
+                }
+                
+                $product->update($updateData);
                 if ($product->price < $item['price']) {
                     $product->update(['price' => $item['price']]);
                 }
@@ -683,7 +689,13 @@ class SuppliersController extends Controller
 
                 $product = Product::find($item['product_id']);
                 $product->increment('stock', $item['quantity']);
-                $product->update(['cost_price' => $item['price']]);
+
+                $updateData = ['cost_price' => $item['price']];
+                if ($product->stock > 0 && !$product->is_available_on_app) {
+                    $updateData['is_available_on_app'] = true;
+                }
+                
+                $product->update($updateData);
                 if ($product->price < $item['price']) {
                     $product->update(['price' => $item['price']]);
                 }

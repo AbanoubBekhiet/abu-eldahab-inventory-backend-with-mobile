@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\CustomerCart;
 use App\Models\Product;
+use Illuminate\Support\Facades\DB;
 
 class CustomerCartController extends Controller
 {
@@ -57,18 +58,33 @@ class CustomerCartController extends Controller
         $productId = $request->product_id;
         $qtyToAdd = $request->quantity;
 
-        $cartItem = CustomerCart::firstOrNew([
-            'user_id' => $userId,
-            'product_id' => $productId
-        ]);
+        $errorResponse = null;
 
-        if ($cartItem->exists) {
-            $cartItem->quantity += $qtyToAdd;
-        } else {
-            $cartItem->quantity = $qtyToAdd;
+        DB::transaction(function() use ($userId, $productId, $qtyToAdd, &$errorResponse) {
+            $product = Product::where('id', $productId)->lockForUpdate()->firstOrFail();
+
+            $cartItem = CustomerCart::firstOrNew([
+                'user_id' => $userId,
+                'product_id' => $productId
+            ]);
+
+            $newQuantity = $cartItem->exists ? $cartItem->quantity + $qtyToAdd : $qtyToAdd;
+
+            if ($product->stock < $newQuantity) {
+                $errorResponse = response()->json([
+                    'success' => false,
+                    'message' => "الكمية المطلوبة من المنتج '{$product->name}' غير متوفرة، المتاح فقط {$product->stock}"
+                ], 422);
+                return;
+            }
+
+            $cartItem->quantity = $newQuantity;
+            $cartItem->save();
+        });
+
+        if ($errorResponse) {
+            return $errorResponse;
         }
-
-        $cartItem->save();
 
         return $this->index($request);
     }
@@ -85,18 +101,38 @@ class CustomerCartController extends Controller
         $userId = $request->user()->id;
         $delta = $request->delta;
 
-        $cartItem = CustomerCart::where('user_id', $userId)
-            ->where('product_id', $productId)
-            ->first();
+        $errorResponse = null;
 
-        if ($cartItem) {
-            $newQuantity = $cartItem->quantity + $delta;
-            if ($newQuantity <= 0) {
-                $cartItem->delete();
-            } else {
-                $cartItem->quantity = $newQuantity;
-                $cartItem->save();
+        DB::transaction(function() use ($userId, $productId, $delta, &$errorResponse) {
+            $product = Product::where('id', $productId)->lockForUpdate()->firstOrFail();
+
+            $cartItem = CustomerCart::where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($cartItem) {
+                $newQuantity = $cartItem->quantity + $delta;
+
+                if ($newQuantity > 0 && $product->stock < $newQuantity) {
+                    $errorResponse = response()->json([
+                        'success' => false,
+                        'message' => "الكمية المطلوبة من المنتج '{$product->name}' غير متوفرة، المتاح فقط {$product->stock}"
+                    ], 422);
+                    return;
+                }
+
+                if ($newQuantity <= 0) {
+                    $cartItem->delete();
+                } else {
+                    $cartItem->quantity = $newQuantity;
+                    $cartItem->save();
+                }
             }
+        });
+
+        if ($errorResponse) {
+            return $errorResponse;
         }
 
         return $this->index($request);

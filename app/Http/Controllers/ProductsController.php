@@ -8,9 +8,30 @@ use App\Models\Category;
 use Inertia\Inertia;
 use App\Imports\SimpleArrayImport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductsExport;
 
 class ProductsController extends Controller
 {
+    public function exportExcel(Request $request)
+    {
+        $categoryIds = $request->input('category_ids', []);
+        return Excel::download(new ProductsExport($categoryIds), 'products-report.xlsx');
+    }
+
+    public function printView(Request $request)
+    {
+        $categoryIds = $request->input('category_ids', []);
+        
+        $query = Product::with('category')->orderBy('category_id')->orderBy('name');
+        
+        if (!empty($categoryIds) && $categoryIds[0] !== 'all') {
+            $query->whereIn('category_id', $categoryIds);
+        }
+
+        $products = $query->get();
+        return view('print.products', compact('products'));
+    }
+
     public function index(Request $request){
         $search = $request->input('search');
         $categoryId = $request->input('category_id');
