@@ -305,8 +305,8 @@ class AuthController extends Controller
     {
         $request->validate([
             'name'         => 'required|string|max:100',
-            'phone'        => 'nullable|string|max:30',
-            'phone_number' => 'nullable|string|max:30',
+            'phone'        => 'nullable|string|max:30|unique:profiles,phone_number',
+            'phone_number' => 'nullable|string|max:30|unique:profiles,phone_number',
             'email'        => 'nullable|string|email|max:150|unique:users',
             'password'     => 'required|string|min:6',
             'address'      => 'nullable|string|max:500',
@@ -387,8 +387,8 @@ class AuthController extends Controller
 
         $request->validate([
             'name'         => 'required|string|max:100',
-            'phone'        => 'nullable|string|max:30',
-            'phone_number' => 'nullable|string|max:30',
+            'phone'        => 'nullable|string|max:30|unique:profiles,phone_number,' . ($user->profile->id ?? 'NULL'),
+            'phone_number' => 'nullable|string|max:30|unique:profiles,phone_number,' . ($user->profile->id ?? 'NULL'),
             'email'        => 'nullable|string|email|max:150|unique:users,email,' . $user->id,
             'address'      => 'nullable|string|max:500',
             'shop_name'    => 'nullable|string|max:150',

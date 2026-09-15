@@ -81,7 +81,7 @@ class CustomersController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email|max:255',
-            'phone_number' => 'nullable|string|max:255',
+            'phone_number' => 'nullable|string|max:255|unique:profiles,phone_number',
             'address' => 'nullable|string|max:255',
             'shop_name' => 'required|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
@@ -119,11 +119,12 @@ class CustomersController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $profileId = $user->profile ? $user->profile->id : 'NULL';
         
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . $user->id . '|max:255',
-            'phone_number' => 'nullable|string|max:255',
+            'phone_number' => 'nullable|string|max:255|unique:profiles,phone_number,' . $profileId,
             'address' => 'nullable|string|max:255',
             'shop_name' => 'required|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
