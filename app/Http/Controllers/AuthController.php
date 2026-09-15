@@ -272,7 +272,13 @@ class AuthController extends Controller
         }
 
         if ($request->has('fcm_token')) {
-            $user->fcm_token = $request->fcm_token;
+            $fcmToken = $request->fcm_token;
+            // Reject fake/generated tokens from old app versions
+            if ($fcmToken && (str_starts_with($fcmToken, 'fcm_') || str_starts_with($fcmToken, 'fake_'))) {
+                \Log::warning("[Auth] Rejected fake FCM token during login for user {$user->id}: {$fcmToken}");
+                $fcmToken = null;
+            }
+            $user->fcm_token = $fcmToken;
             $user->save();
         }
 
@@ -310,13 +316,18 @@ class AuthController extends Controller
             'fcm_token'    => 'nullable|string',
             'region_id'    => 'required|exists:regions,id',
         ]);
+        // Sanitize FCM token — reject fake/generated tokens
+        $fcmToken = $request->fcm_token;
+        if ($fcmToken && (str_starts_with($fcmToken, 'fcm_') || str_starts_with($fcmToken, 'fake_'))) {
+            $fcmToken = null;
+        }
 
         $user = User::create([
             'name'      => $request->name,
             'email'     => $request->email,
             'password'  => Hash::make($request->password),
             'role'      => 'customer',
-            'fcm_token' => $request->fcm_token,
+            'fcm_token' => $fcmToken,
         ]);
 
         $phoneNumber = $request->phone ?: $request->phone_number;
@@ -444,7 +455,13 @@ class AuthController extends Controller
 
         $user = $request->user();
         if ($user) {
-            $user->fcm_token = $request->fcm_token;
+            $fcmToken = $request->fcm_token;
+            // Reject fake/generated tokens from old app versions
+            if ($fcmToken && (str_starts_with($fcmToken, 'fcm_') || str_starts_with($fcmToken, 'fake_'))) {
+                \Log::warning("[Auth] Rejected fake FCM token in updateFcmToken for user {$user->id}: {$fcmToken}");
+                $fcmToken = null;
+            }
+            $user->fcm_token = $fcmToken;
             $user->save();
         }
 

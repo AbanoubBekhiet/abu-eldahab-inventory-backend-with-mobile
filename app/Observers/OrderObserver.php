@@ -42,8 +42,11 @@ class OrderObserver
                 ->pluck('fcm_token')
                 ->toArray();
 
+            $adminCount = User::whereIn('role', ['admin', 'sub_admin'])->count();
+            Log::info("[OrderObserver] New order {$orderLabel}: Found {$adminCount} admin(s), " . count($adminTokens) . " with FCM tokens.");
+
             if (!empty($adminTokens)) {
-                FcmService::sendToMultiple(
+                $sent = FcmService::sendToMultiple(
                     $adminTokens,
                     $title,
                     $body,
@@ -52,6 +55,9 @@ class OrderObserver
                         'order_id' => (string) $order->id,
                     ]
                 );
+                Log::info("[OrderObserver] Notification result for {$orderLabel}: {$sent}/" . count($adminTokens) . " succeeded.");
+            } else {
+                Log::warning("[OrderObserver] No admin FCM tokens found! Admin users need to login on the mobile app to receive push notifications.");
             }
         } catch (\Exception $e) {
             Log::error("OrderObserver created exception: " . $e->getMessage());
