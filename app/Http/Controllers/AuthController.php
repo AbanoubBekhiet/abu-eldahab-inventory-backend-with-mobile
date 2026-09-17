@@ -252,8 +252,7 @@ class AuthController extends Controller
         if (!$user && strpos($request->email, '@') === false) {
             $user = User::where('name', $request->email)
                 ->orWhereHas('profile', function($q) use ($request) {
-                    $q->where('phone_number', $request->email)
-                      ->orWhere('phone_number2', $request->email);
+                    $q->where('phone_number', $request->email);
                 })->first();
         }
 
