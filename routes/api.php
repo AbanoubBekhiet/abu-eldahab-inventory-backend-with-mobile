@@ -111,6 +111,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Customers & Customer Accounts
         Route::get('/customers', [CustomersController::class, 'apiIndex']);
         Route::post('/customers', [CustomersController::class, 'apiStore']);
+        Route::post('/customers/export', [CustomersController::class, 'exportExcel']);
+        Route::post('/customers/print', [CustomersController::class, 'printView']);
         Route::post('/customers/import', [CustomersController::class, 'apiImport']);
         Route::get('/customers/{customer}/orders', [CustomersController::class, 'apiCustomerOrders']);
         Route::get('/customers/{customer}/stats-range', [CustomersController::class, 'apiCustomerStatsRange']);
@@ -123,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // App Users (Admin View)
         Route::get('/app-users', [CustomersController::class, 'apiAppUsersIndex']);
+        Route::get('/active-carts', [CustomersController::class, 'apiActiveCarts']);
         Route::get('/app-users/{user}/orders', [CustomersController::class, 'apiCustomerOrders']);
         Route::get('/app-users/{user}/cart', [CustomersController::class, 'apiAppUserCart']);
         Route::delete('/app-users/{user}/cart/{product}', [CustomersController::class, 'apiAppUserCartDelete']);

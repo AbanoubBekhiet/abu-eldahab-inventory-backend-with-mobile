@@ -203,38 +203,7 @@ export default function SettingsIndex({ settings: initialSettings = {} }) {
                             </div>
                         </div>
 
-                        {/* Divider */}
-                        <div style={{ borderTop: '1px solid #EAE8E2' }} />
 
-                        {/* Receipt Size */}
-                        <div>
-                            <label className="flex items-center gap-2 text-sm font-bold mb-2" style={{ color: '#1A2D23' }}>
-                                <FileText className="w-4 h-4" style={{ color: '#2E5A44' }} />
-                                حجم ورقة الطباعة
-                            </label>
-                            <p className="text-xs mb-3" style={{ color: '#9A978F' }}>
-                                يحدد حجم الورق عند طباعة الفاتورة مباشرةً دون سؤال
-                            </p>
-                            <div className="flex gap-3">
-                                {['A4', 'A5'].map(size => (
-                                    <button
-                                        key={size}
-                                        type="button"
-                                        onClick={() => setReceiptSize(size)}
-                                        className="flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2"
-                                        style={receiptSize === size
-                                            ? { backgroundColor: '#EEF4F1', borderColor: '#2E5A44', color: '#2E5A44' }
-                                            : { backgroundColor: '#FAF9F6', borderColor: '#E2E0DA', color: '#7C7870' }
-                                        }
-                                    >
-                                        {size}
-                                        <span className="block text-xs font-normal mt-0.5" style={{ color: receiptSize === size ? '#3A7259' : '#B8B5AE' }}>
-                                            {size === 'A4' ? '210 × 297 ملم' : '148 × 210 ملم'}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
 
                         {/* Divider */}
                         <div style={{ borderTop: '1px solid #EAE8E2' }} />

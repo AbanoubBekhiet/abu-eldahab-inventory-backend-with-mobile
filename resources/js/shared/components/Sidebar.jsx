@@ -27,6 +27,7 @@ const navItems = [
     { name: 'التصنيفات',   icon: Layers,          href: '/categories' },
     { name: 'العملاء',     icon: Users,           href: '/customers' },
     { name: 'حسابات العملاء', icon: Wallet,     href: '/customers-accounts' },
+    { name: 'السلال النشطة', icon: ShoppingCart, href: '/active-carts' },
     { name: 'الطلبات',     icon: ClipboardList,   href: '/orders' },
     { name: 'الموردين',    icon: Truck,           href: '/suppliers' },
     { name: 'حسابات الموردين', icon: Building2, href: '/suppliers-accounts' },

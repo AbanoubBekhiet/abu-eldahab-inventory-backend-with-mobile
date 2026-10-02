@@ -12,9 +12,44 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Imports\SimpleArrayImport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\CustomersExport;
 
 class CustomersController extends Controller
 {
+    public function exportExcel(Request $request)
+    {
+        $regionIds = $request->input('region_ids', []);
+        return Excel::download(new CustomersExport($regionIds), 'customers-report.xlsx');
+    }
+
+    public function printView(Request $request)
+    {
+        $regionIds = $request->input('region_ids', []);
+        
+        $query = User::where('role', 'customer')
+            ->with(['profile.region'])
+            ->orderBy('name');
+        
+        if (!empty($regionIds) && $regionIds[0] !== 'all') {
+            $query->whereHas('profile', function($q) use ($regionIds) {
+                $q->whereIn('region_id', $regionIds);
+            });
+        }
+
+        $customers = $query->get()->map(function($user) {
+            $aggregates = \App\Models\CustomerTransaction::where('user_id', $user->id)
+                ->selectRaw('
+                    SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as total_debts,
+                    SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END) as total_payments
+                ')->first();
+            $balance = round(floatval($aggregates->total_debts ?? 0) - floatval($aggregates->total_payments ?? 0), 2);
+            $user->balance = $balance;
+            return $user;
+        });
+
+        return view('print.customers', compact('customers'));
+    }
+
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -1184,6 +1219,63 @@ class CustomersController extends Controller
                 'next_page'    => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
                 'current_page' => $paginator->currentPage(),
             ],
+        ]);
+    }
+    public function apiActiveCarts(Request $request)
+    {
+        // Get all users who have at least one cart item
+        // Group by user, order by the latest cart item updated_at descending
+        $query = User::whereHas('customerCarts')
+            ->with(['profile', 'customerCarts' => function($q) {
+                $q->orderBy('updated_at', 'desc');
+            }, 'customerCarts.product'])
+            ->select('users.*')
+            // Using a subquery to order by the latest updated_at of the user's cart items
+            ->orderByDesc(
+                \App\Models\CustomerCart::select('updated_at')
+                    ->whereColumn('user_id', 'users.id')
+                    ->orderByDesc('updated_at')
+                    ->limit(1)
+            );
+
+        $paginator = $query->simplePaginate(15);
+
+        $activeCarts = collect($paginator->items())->map(function($user) {
+            $latestCartItemDate = $user->customerCarts->first()?->updated_at;
+            
+            return [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->profile?->phone_number ?? '—',
+                ],
+                'last_added_date' => $latestCartItemDate ? $latestCartItemDate->locale('ar')->translatedFormat('j F Y g:i a') : '—',
+                'items_count' => $user->customerCarts->count(),
+                'items' => $user->customerCarts->map(function($cart) {
+                    $product = $cart->product;
+                    if (!$product) return null;
+
+                    $media = $product->getFirstMedia('products');
+                    $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'price' => floatval($product->price),
+                        'image_url' => $imageUrl,
+                        'quantity' => $cart->quantity,
+                        'unit' => $product->unit,
+                    ];
+                })->filter()->values()
+            ];
+        });
+
+        return response()->json([
+            'active_carts' => [
+                'data' => $activeCarts,
+                'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+                'current_page' => $paginator->currentPage(),
+            ]
         ]);
     }
 }

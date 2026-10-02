@@ -10,15 +10,38 @@ function safeParseNumber(val) {
     return parseFloat(cleaned) || 0;
 }
 
+// Silent print via hidden iframe — no print dialog shown
+export function silentPrint(html) {
+    // Remove any existing silent-print iframe
+    const existing = document.getElementById('__silent_print_frame')
+    if (existing) existing.remove()
+
+    const iframe = document.createElement('iframe')
+    iframe.id = '__silent_print_frame'
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;'
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(html)
+    doc.close()
+
+    iframe.contentWindow.focus()
+    setTimeout(() => {
+        try {
+            iframe.contentWindow.print()
+        } catch (e) {
+            console.error('Silent print failed:', e)
+        }
+        setTimeout(() => iframe.remove(), 2000)
+    }, 500)
+}
+
 export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn }) {
     const { appSettings } = usePage().props
     const handlePrint = () => {
         const printContent = buildPrintHTML(order, appSettings)
-        const w = window.open('', '_blank', 'width=800,height=700')
-        w.document.write(printContent)
-        w.document.close()
-        w.focus()
-        setTimeout(() => { w.print(); w.close() }, 400)
+        silentPrint(printContent)
     }
 
     return (
@@ -42,49 +65,49 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
 
                 <div className="flex-1 overflow-y-auto p-8 text-[#111] space-y-4" style={{ fontFamily: "Arial, sans-serif" }}>
                     {/* Header Section */}
-                    <div className="flex justify-between items-start pb-4 mb-4 border-b-2 border-[#1A2D23] text-right">
-                        <div className="space-y-1">
-                            <h2 className="text-xl font-bold text-[#1A2D23]">
+                    <div className="flex justify-between items-start pb-4 mb-4 border-b-2 border-[#1A2D23] text-right gap-4">
+                        <div className="flex-1">
+                            <h2 className="text-2xl font-bold text-[#1A2D23] mb-4">
                                 {appSettings?.receipt_name || 'فاتورة طلب'}
                             </h2>
-                            <p className="text-xs text-[#555]">فاتورة بيع</p>
-                            <div className="text-xs space-y-1 mt-2 text-[#333]">
-                                <div><strong>رقم الطلب:</strong> {order.id || order.order_number}</div>
-                                <div><strong>التاريخ:</strong> {order.date}</div>
-                                <div className="flex items-center gap-1 flex-wrap text-sm sm:text-base font-bold text-[#111]">
-                                    <strong>العميل:</strong>
-                                    <span className="text-base sm:text-lg font-extrabold">{order.customer || order.customer_name || 'عميل نقدي'}</span>
-                                    {safeParseNumber(order.previous_balance || 0) !== 0 && (
-                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                            safeParseNumber(order.previous_balance || 0) > 0 ? 'bg-[#FDEEEC] text-[#C0392B]' : 'bg-[#EAF6EE] text-[#2E5A44]'
-                                        }`}>
-                                            (رصيد سابق: {safeParseNumber(order.previous_balance || 0) > 0 ? `${safeParseNumber(order.previous_balance).toFixed(2)} ج.م` : `${Math.abs(safeParseNumber(order.previous_balance)).toFixed(2)} - ج.م`})
-                                        </span>
-                                    )}
-                                </div>
-                                {order.customer_address && order.customer_address !== '—' && (
-                                    <div><strong>العنوان:</strong> {order.customer_address}</div>
-                                )}
-                                {(order.customer_phone || order.customer_phone_number || order.phone) && (
-                                    <div><strong>هاتف العميل:</strong> {order.customer_phone || order.customer_phone_number || order.phone}</div>
-                                )}
-                            </div>
+                            <table className="w-full border-collapse border-[1.5px] border-black text-[12px] sm:text-[13px] text-right">
+                                <tbody>
+                                    <tr>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[18%]">العميل</th>
+                                        <td className="p-2 border border-black font-bold">
+                                            {order.customer || order.customer_name || 'عميل نقدي'}
+                                        </td>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[15%]">التاريخ</th>
+                                        <td className="p-2 border border-black font-bold w-[22%]">{order.date}</td>
+                                    </tr>
+                                    <tr>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold">العنوان</th>
+                                        <td className="p-2 border border-black">
+                                            {order.customer_address && order.customer_address !== '—' ? order.customer_address : ''}
+                                        </td>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
+                                        <td className="p-2 border border-black font-bold" dir="ltr">
+                                            {order.customer_phone || order.customer_phone_number || order.phone || ''}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div className="flex flex-col items-end text-right">
+                        <div className="flex flex-col items-end text-left w-[120px] shrink-0">
                             {appSettings?.receipt_logo_url ? (
                                 <img
                                     src={appSettings.receipt_logo_url}
                                     alt="logo"
-                                    className="max-h-16 max-w-[120px] object-contain mb-2"
+                                    className="max-h-[90px] max-w-full object-contain mb-1"
                                 />
                             ) : (
-                                <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-2 shadow"
+                                <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-1 shadow"
                                     style={{ background: 'linear-gradient(135deg, #559476, #2E5A44)' }}>
                                     {(appSettings?.receipt_name || 'م').charAt(0).toUpperCase()}
                                 </div>
                             )}
                             {(appSettings?.phone1 || appSettings?.phone2) && (
-                                <div className="text-xs text-[#333] font-bold text-right leading-relaxed whitespace-pre-line">
+                                <div className="text-[11px] text-[#333] font-bold text-left leading-relaxed whitespace-pre-line mt-1">
                                     📞 {[appSettings.phone1, appSettings.phone2].filter(Boolean).join('\n📞 ')}
                                 </div>
                             )}
@@ -92,19 +115,19 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                     </div>
 
                     {/* Items Table */}
-                    <table className="w-full text-sm border-collapse mb-4">
+                    <table className="w-full text-sm border-collapse mb-4 border-[1.5px] border-black">
                         <thead>
-                            <tr className="bg-[#f5f5f5] border-b-2 border-[#ccc]">
-                                <th className="py-2 px-1 text-right font-bold text-[#333]">المنتج</th>
-                                <th className="py-2 px-1 text-center font-bold text-[#333]">الكمية</th>
-                                <th className="py-2 px-1 text-center font-bold text-[#333]">السعر</th>
-                                <th className="py-2 px-1 text-center font-bold text-[#333]">الإجمالي</th>
+                            <tr className="bg-[#f5f5f5]">
+                                <th className="py-2 px-1 text-right font-bold text-[#333] border border-black">المنتج</th>
+                                <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">الكمية</th>
+                                <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">السعر</th>
+                                <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">الإجمالي</th>
                             </tr>
                         </thead>
                         <tbody>
                             {(order.products || []).map((p, idx) => (
-                                <tr key={idx} className="border-b border-[#eee]">
-                                    <td className="py-2 px-1 text-right text-[#111]">
+                                <tr key={idx}>
+                                    <td className="py-2 px-1 text-right text-[#111] border border-black">
                                         {idx + 1} - {p.name}
                                         {p.returned_qty > 0 && (
                                             <span className="text-amber-600 mr-2 text-xs">
@@ -112,7 +135,7 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                                             </span>
                                         )}
                                     </td>
-                                    <td className="py-2 px-1 text-center text-[#111]">
+                                    <td className="py-2 px-1 text-center text-[#111] border border-black">
                                         {p.quantity}{p.unit ? ' ' + p.unit : ''}
                                         {parseInt(p.number_of_items_in_unit || 0) > 1 && (
                                             <div className="text-[10px] text-[#777]">
@@ -120,10 +143,10 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-2 px-1 text-center text-[#111]">
+                                    <td className="py-2 px-1 text-center text-[#111] border border-black">
                                         {parseFloat(p.price || 0).toFixed(2)}
                                     </td>
-                                    <td className="py-2 px-1 text-center text-[#111] font-semibold">
+                                    <td className="py-2 px-1 text-center text-[#111] font-semibold border border-black">
                                         {parseFloat(p.total_price || 0).toFixed(2)}
                                     </td>
                                 </tr>
@@ -132,29 +155,9 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                     </table>
 
                     {/* Total Units Count */}
-                    <div className="py-2 border-t border-dashed border-[#ccc] text-xs text-[#333] text-right mb-2">
+                    <div className="py-2 text-xs text-[#333] text-right mb-2 font-bold">
                         إجمالي الوحدات: <strong>{(order.products || []).reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0)}</strong>
                     </div>
-
-                    {/* Payment Type */}
-                    {order.payment_type && (
-                        <div className="py-2 border-t border-dashed border-[#ccc] text-sm text-right mb-2 flex justify-between items-center">
-                            <span className="text-[#555]">نوع الدفع</span>
-                            <div className="flex items-center gap-2">
-                                {order.source === 'app' && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                        style={{ backgroundColor: '#EEF2FF', color: '#4338CA', border: '1px solid #C7D2FE' }}>
-                                        📱 من التطبيق
-                                    </span>
-                                )}
-                                <span className={`font-bold text-xs px-3 py-1 rounded-lg ${
-                                    order.payment_type === 'آجل'
-                                        ? (order.paid_amount > 0 ? 'bg-[#FFF8E1] text-[#F39C12] border border-[#FCD34D]' : 'bg-[#FDEEEC] text-[#C0392B] border border-[#F5C2C0]')
-                                        : 'bg-[#EAF6EE] text-[#2E5A44] border border-[#B7E1C5]'
-                                }`}>{order.payment_type === 'آجل' && order.paid_amount > 0 ? `آجل (مدفوع جزئي: ${order.paid_amount} ج.م)` : order.payment_type}</span>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Notes */}
                     {order.notes && (
@@ -338,7 +341,7 @@ export function buildPrintHTML(order, appSettings = {}) {
     }).join('');
 
     const totalUnits = products.reduce((sum, p) => sum + parseFloat(p.quantity || 0), 0);
-    const pageSize = receipt_size === 'A5' ? 'A5' : 'A4';
+    const pageSize = 'A5'; // Always print on A5
 
     let balanceHtml = '';
     if (previousBalance !== 0 || creditUsed > 0) {
@@ -381,7 +384,7 @@ export function buildPrintHTML(order, appSettings = {}) {
         ${finalBalanceText}
     </div>`;
 
-    return `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>فاتورة طباعة</title>
+    return `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>فاتورة طباعة</title><base href="${window.location.origin}/" />
     <style>
         @page { size: ${pageSize}; margin: 12mm; }
         * { margin:0; padding:0; box-sizing:border-box }
@@ -395,8 +398,9 @@ export function buildPrintHTML(order, appSettings = {}) {
             border-bottom: 2px solid #222;
         }
         .print-header img {
-            max-height: 55px;
-            max-width: 110px;
+            height: 90px;
+            width: auto;
+            max-width: 200px;
             object-fit: contain;
             margin-bottom: 4px;
         }
@@ -429,10 +433,10 @@ export function buildPrintHTML(order, appSettings = {}) {
             line-height: 1.4;
             text-align: left;
         }
-        table { width:100%; border-collapse:collapse; margin-top: 6px; margin-bottom:10px }
-        th { background:#f5f5f5; padding:5px 4px; text-align:center; font-size:11px; border-bottom:2px solid #ccc; font-weight:bold; }
+        table { width:100%; border-collapse:collapse; margin-top: 6px; margin-bottom:10px; border: 1.5px solid #000; }
+        th { background:#f5f5f5; padding:6px 4px; text-align:center; font-size:12px; font-weight:bold; border: 1px solid #000; }
         th:first-child { text-align:right }
-        td { padding:4px 4px; border-bottom:1px solid #eee; text-align:center; font-size:11px; }
+        td { padding:6px 4px; text-align:center; font-size:12px; border: 1px solid #000; }
         td:first-child { text-align:right }
         .unit-count { font-size:11px; color:#333; padding:5px 0; text-align:right; margin-bottom:6px; }
         .totals { border-top:1.5px solid #111; padding-top:6px }
@@ -441,30 +445,27 @@ export function buildPrintHTML(order, appSettings = {}) {
         .footer { display:none; }
     </style>
     </head><body>
-    <div class="print-header">
-        <div class="header-right">
-            <h1>${receipt_name || 'فاتورة طلب'}</h1>
-            <p class="sub-type">فاتورة بيع</p>
-            <div class="meta-info">
-                <div><strong>التاريخ:</strong> ${date}</div>
-                 <div style="font-size:15px; font-weight:bold; margin-top:2px; margin-bottom:2px;">
-                    <strong>العميل:</strong> <span style="font-size:16px; font-weight:bold;">${customer}</span>
-                    ${previousBalance !== 0 ? `
-                        <span style="margin-right:8px;font-size:11px;font-weight:bold;padding:2px 6px;border-radius:4px;${
-                            previousBalance > 0 ? 'background-color:#FDEEEC;color:#C0392B;' : 'background-color:#EAF6EE;color:#2E5A44;'
-                        }">
-                            (رصيد سابق: ${previousBalance > 0 ? `${previousBalance.toFixed(2)} ج.م (عليه)` : `${Math.abs(previousBalance).toFixed(2)} - ج.م (له)`})
-                        </span>
-                    ` : ''}
-                </div>
-                ${address && address !== '—' ? `<div><strong>العنوان:</strong> ${address}</div>` : ''}
-                ${customerPhone ? `<div><strong>هاتف العميل:</strong> ${customerPhone}</div>` : ''}
-                ${paymentType ? `<div><strong>نوع الدفع:</strong> <span style="font-weight:bold;color:${paymentType === 'آجل' ? '#C0392B' : '#2E5A44'}">${paymentType}</span></div>` : ''}
-            </div>
+    <div class="print-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid #222;">
+        <div class="header-right" style="flex:1; text-align:right;">
+            <h1 style="font-size:24px; margin-top:0px; margin-bottom:10px;">${receipt_name || 'فاتورة طلب'}</h1>
+            <table style="width:100%; border-collapse:collapse; border: 1.5px solid #000; font-size:12px;">
+                <tr>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold; width:18%;">العميل</th>
+                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;">${customer}</td>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold; width:15%;">التاريخ</th>
+                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right; width:22%;">${date}</td>
+                </tr>
+                <tr>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">العنوان</th>
+                    <td style="padding:4px; border:1px solid #000; text-align:right;">${address && address !== '—' ? address : ''}</td>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">التليفون</th>
+                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;" dir="ltr">${customerPhone || ''}</td>
+                </tr>
+            </table>
         </div>
-        <div class="header-left">
+        <div class="header-left" style="margin-right:15px; text-align:left; display:flex; flex-direction:column; align-items:flex-end;">
             ${logoHtml}
-            ${phone1 || phone2 ? `<div class="phones">📞 ${[phone1, phone2].filter(Boolean).join('<br>')}</div>` : ''}
+            ${phone1 || phone2 ? `<div class="phones" style="font-size:11px; margin-top:4px;">📞 ${[phone1, phone2].filter(Boolean).join('<br>')}</div>` : ''}
         </div>
     </div>
     <table>

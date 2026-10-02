@@ -7,7 +7,7 @@ import POSProductCard from './components/POSProductCard'
 import PendingCartsPanel from './components/PendingCartsPanel'
 import CategoryFilter from '../products/components/CategoryFilter'
 import { Minimize2, ArrowLeft, RefreshCw, ShoppingBag, Printer, X, Check, AlertCircle } from 'lucide-react'
-import { buildPrintHTML } from '../orders/components/OrderDetailsModal'
+import { buildPrintHTML, silentPrint } from '../orders/components/OrderDetailsModal'
 import api from '../../shared/services/api'
 
 export default function POSIndex({ products: initialProducts, categories: initialCategories, customers: initialCustomers, pendingCarts: initialPendingCarts }) {
@@ -360,11 +360,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
 
     const handleDirectPrint = (receiptData, settings = {}) => {
         const html = buildPrintHTML(receiptData, settings)
-        const w = window.open('', '_blank', 'width=800,height=700')
-        w.document.write(html)
-        w.document.close()
-        w.focus()
-        setTimeout(() => { w.print(); w.close() }, 400)
+        silentPrint(html)
     }
 
     return (
@@ -558,48 +554,49 @@ export default function POSIndex({ products: initialProducts, categories: initia
                         <div className="p-8 overflow-y-auto max-h-[70vh] flex-1 text-[#111]" id="print-receipt-area" style={{ fontFamily: "Arial, sans-serif" }}>
 
                             {/* Header Section */}
-                            <div className="flex justify-between items-start pb-4 mb-4 border-b-2 border-[#1A2D23] text-right">
-                                <div className="space-y-1">
-                                    <h2 className="text-xl font-bold text-[#1A2D23]">
+                            <div className="flex justify-between items-start pb-4 mb-4 border-b-2 border-[#1A2D23] text-right gap-4">
+                                <div className="flex-1">
+                                    <h2 className="text-2xl font-bold text-[#1A2D23] mb-4">
                                         {appSettings?.receipt_name || 'فاتورة طلب'}
                                     </h2>
-                                    <p className="text-xs text-[#555]">فاتورة بيع</p>
-                                    <div className="text-xs space-y-1 mt-2 text-[#333]">
-                                        <div><strong>التاريخ:</strong> {receipt.date}</div>
-                                        <div className="flex items-center gap-1 flex-wrap text-sm sm:text-base font-bold text-[#111]">
-                                            <strong>العميل:</strong>
-                                            <span className="text-base sm:text-lg font-extrabold">{receipt.customer_name}</span>
-                                            {parseFloat(receipt.previous_balance || 0) !== 0 && (
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                                    parseFloat(receipt.previous_balance || 0) > 0 ? 'bg-[#FDEEEC] text-[#C0392B]' : 'bg-[#EAF6EE] text-[#2E5A44]'
-                                                }`}>
-                                                    (رصيد سابق: {parseFloat(receipt.previous_balance || 0) > 0 ? `${parseFloat(receipt.previous_balance).toFixed(2)} ج.م` : `${Math.abs(parseFloat(receipt.previous_balance)).toFixed(2)} - ج.م`})
-                                                </span>
-                                            )}
-                                        </div>
-                                        {receipt.customer_address && receipt.customer_address !== '—' && (
-                                            <div><strong>العنوان:</strong> {receipt.customer_address}</div>
-                                        )}
-                                        {(receipt.customer_phone || receipt.customer_phone_number || receipt.phone) && (
-                                            <div><strong>هاتف العميل:</strong> {receipt.customer_phone || receipt.customer_phone_number || receipt.phone}</div>
-                                        )}
-                                    </div>
+                                    <table className="w-full border-collapse border-[1.5px] border-black text-[12px] sm:text-[13px] text-right">
+                                        <tbody>
+                                            <tr>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[18%]">العميل</th>
+                                                <td className="p-2 border border-black font-bold">
+                                                    {receipt.customer_name || 'عميل نقدي'}
+                                                </td>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[15%]">التاريخ</th>
+                                                <td className="p-2 border border-black font-bold w-[22%]">{receipt.date}</td>
+                                            </tr>
+                                            <tr>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold">العنوان</th>
+                                                <td className="p-2 border border-black">
+                                                    {receipt.customer_address && receipt.customer_address !== '—' ? receipt.customer_address : ''}
+                                                </td>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
+                                                <td className="p-2 border border-black font-bold" dir="ltr">
+                                                    {receipt.customer_phone || receipt.customer_phone_number || receipt.phone || ''}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div className="flex flex-col items-end text-right">
+                                <div className="flex flex-col items-end text-left w-[120px] shrink-0">
                                     {appSettings?.receipt_logo_url ? (
                                         <img
                                             src={appSettings.receipt_logo_url}
                                             alt="logo"
-                                            className="max-h-16 max-w-[120px] object-contain mb-2"
+                                            className="max-h-[90px] max-w-full object-contain mb-1"
                                         />
                                     ) : (
-                                        <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-2 shadow"
+                                        <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-1 shadow"
                                             style={{ background: 'linear-gradient(135deg, #559476, #2E5A44)' }}>
                                             {(appSettings?.receipt_name || 'م').charAt(0).toUpperCase()}
                                         </div>
                                     )}
                                     {(appSettings?.phone1 || appSettings?.phone2) && (
-                                        <div className="text-xs text-[#333] font-bold text-right leading-relaxed">
+                                        <div className="text-[11px] text-[#333] font-bold text-left leading-relaxed whitespace-pre-line mt-1">
                                             📞 {[appSettings.phone1, appSettings.phone2].filter(Boolean).join('\n📞 ')}
                                         </div>
                                     )}
@@ -607,20 +604,20 @@ export default function POSIndex({ products: initialProducts, categories: initia
                             </div>
 
                             {/* Items Table */}
-                            <table className="w-full text-sm border-collapse mb-4">
+                            <table className="w-full text-sm border-collapse mb-4 border-[1.5px] border-black">
                                 <thead>
-                                    <tr className="bg-[#f5f5f5] border-b-2 border-[#ccc]">
-                                        <th className="py-2 px-1 text-right font-bold text-[#333]">المنتج</th>
-                                        <th className="py-2 px-1 text-center font-bold text-[#333]">الكمية</th>
-                                        <th className="py-2 px-1 text-center font-bold text-[#333]">السعر</th>
-                                        <th className="py-2 px-1 text-center font-bold text-[#333]">الإجمالي</th>
+                                    <tr className="bg-[#f5f5f5]">
+                                        <th className="py-2 px-1 text-right font-bold text-[#333] border border-black">المنتج</th>
+                                        <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">الكمية</th>
+                                        <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">السعر</th>
+                                        <th className="py-2 px-1 text-center font-bold text-[#333] border border-black">الإجمالي</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {receipt.items.map((item, idx) => (
-                                        <tr key={idx} className="border-b border-[#eee]">
-                                            <td className="py-2 px-1 text-right text-[#111]">{idx + 1} - {item.name}</td>
-                                            <td className="py-2 px-1 text-center text-[#111]">
+                                        <tr key={idx}>
+                                            <td className="py-2 px-1 text-right text-[#111] border border-black">{idx + 1} - {item.name}</td>
+                                            <td className="py-2 px-1 text-center text-[#111] border border-black">
                                                 {item.quantity}{item.unit ? ' ' + item.unit : ''}
                                                 {parseInt(item.number_of_items_in_unit || 0) > 1 && (
                                                     <div className="text-[10px] text-[#777]">
@@ -628,10 +625,10 @@ export default function POSIndex({ products: initialProducts, categories: initia
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="py-2 px-1 text-center text-[#111]">
+                                            <td className="py-2 px-1 text-center text-[#111] border border-black">
                                                 {parseFloat(item.price).toFixed(2)}
                                             </td>
-                                            <td className="py-2 px-1 text-center text-[#111] font-semibold">
+                                            <td className="py-2 px-1 text-center text-[#111] font-semibold border border-black">
                                                 {parseFloat(item.total_price).toFixed(2)}
                                             </td>
                                         </tr>
@@ -640,21 +637,9 @@ export default function POSIndex({ products: initialProducts, categories: initia
                             </table>
 
                             {/* Total Units Count */}
-                            <div className="py-2 border-t border-dashed border-[#ccc] text-xs text-[#333] text-right mb-2">
+                            <div className="py-2 text-xs text-[#333] text-right mb-2 font-bold">
                                 إجمالي الوحدات: <strong>{receipt.items.reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0)}</strong>
                             </div>
-
-                            {/* Payment Type */}
-                            {receipt.payment_type && (
-                                <div className="py-2 border-t border-dashed border-[#ccc] text-sm text-right mb-2 flex justify-between items-center">
-                                    <span className="text-[#555]">نوع الدفع</span>
-                                    <span className={`font-bold text-sm px-3 py-1 rounded-lg ${
-                                        receipt.payment_type === 'آجل'
-                                            ? 'bg-[#FDEEEC] text-[#C0392B] border border-[#F5C2C0]'
-                                            : 'bg-[#EAF6EE] text-[#2E5A44] border border-[#B7E1C5]'
-                                    }`}>{receipt.payment_type}</span>
-                                </div>
-                            )}
 
                             {/* Summary / Totals */}
                             <div className="border-t-2 border-[#111] pt-3 text-sm space-y-2">

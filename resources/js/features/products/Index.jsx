@@ -451,23 +451,17 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
             )}
 
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6" dir="rtl">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-                    <SearchInput
-                        placeholder="البحث عن المنتجات..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="sm:w-72"
-                    />
-                    <CategoryFilter
-                        categories={categories}
-                        selected={selectedCategory}
-                        onChange={setSelectedCategory}
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    {/* View Toggle */}
-                    <div className="flex items-center bg-[#EAE8E2] rounded-xl p-1">
+            <div className="flex flex-col gap-4 mb-6" dir="rtl">
+                {/* Top Row: Category Filter and View Toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 flex overflow-x-auto pb-1 -mb-1">
+                        <CategoryFilter
+                            categories={categories}
+                            selected={selectedCategory}
+                            onChange={setSelectedCategory}
+                        />
+                    </div>
+                    <div className="flex items-center bg-[#EAE8E2] rounded-xl p-1 flex-shrink-0">
                         <button
                             onClick={() => setViewMode('grid')}
                             className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-primary-600' : 'text-[#7C7870]'}`}
@@ -481,24 +475,38 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             <List className="w-4 h-4" />
                         </button>
                     </div>
-                    <button
-                        onClick={() => setIsImportOpen(true)}
-                        className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        <UploadCloud className="w-4 h-4" />
-                        استيراد من إكسل (CSV)
-                    </button>
-                    <button
-                        onClick={() => {
-                            setExportSelectedCategories(['all']);
-                            setIsExportModalOpen(true);
-                        }}
-                        className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        <Printer className="w-4 h-4" />
-                        تصدير / طباعة
-                    </button>
-                    <Button icon={Plus} onClick={openAddModal}>إضافة منتج</Button>
+                </div>
+
+                {/* Bottom Row: Search and Action Buttons */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1">
+                        <SearchInput
+                            placeholder="البحث عن المنتجات..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full sm:w-72"
+                        />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => setIsImportOpen(true)}
+                            className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <UploadCloud className="w-4 h-4" />
+                            استيراد (CSV)
+                        </button>
+                        <button
+                            onClick={() => {
+                                setExportSelectedCategories(['all']);
+                                setIsExportModalOpen(true);
+                            }}
+                            className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <Printer className="w-4 h-4" />
+                            تصدير / طباعة
+                        </button>
+                        <Button icon={Plus} onClick={openAddModal}>إضافة منتج</Button>
+                    </div>
                 </div>
             </div>
 

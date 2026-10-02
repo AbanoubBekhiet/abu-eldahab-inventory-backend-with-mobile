@@ -21,8 +21,7 @@ class ProductsController extends Controller
     public function printView(Request $request)
     {
         $categoryIds = $request->input('category_ids', []);
-        
-        $query = Product::with('category')->orderBy('category_id')->orderBy('name');
+        $query = Product::with('category')->orderBy('id', 'asc');
         
         if (!empty($categoryIds) && $categoryIds[0] !== 'all') {
             $query->whereIn('category_id', $categoryIds);

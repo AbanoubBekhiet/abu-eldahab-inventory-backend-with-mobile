@@ -18,7 +18,7 @@ class ProductsExport implements FromView, ShouldAutoSize
 
     public function view(): View
     {
-        $query = Product::with('category')->orderBy('category_id')->orderBy('name');
+        $query = Product::with('category')->orderBy('id', 'asc');
         
         if (!empty($this->categoryIds) && $this->categoryIds[0] !== 'all') {
             $query->whereIn('category_id', $this->categoryIds);

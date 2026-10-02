@@ -54,6 +54,8 @@ Route::get('/regions', fn () => Inertia::render('regions/Index'))->name('regions
 // Sub-Admin Management Page (Admin Only)
 Route::get('/sub-admins', fn () => Inertia::render('sub-admins/Index'))->name('sub-admins');
 
+Route::get('/active-carts', fn () => Inertia::render('active-carts/Index'))->name('active-carts');
+
 // Public Storage File Routes
 Route::get('/app-storage/{id}/{filename}', function ($id, $filename) {
     $path = $id . '/' . $filename;

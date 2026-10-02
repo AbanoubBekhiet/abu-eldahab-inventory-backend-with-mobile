@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { usePage } from '@inertiajs/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput } from '../../shared/components'
 import OrderRow from './components/OrderRow'
 import OrderDetailsModal from './components/OrderDetailsModal'
-import { buildPrintHTML } from './components/OrderDetailsModal'
+import { buildPrintHTML, silentPrint } from './components/OrderDetailsModal'
 import DiscountModal from './components/DiscountModal'
 import ReturnModal from './components/ReturnModal'
 import { X } from 'lucide-react'
@@ -14,6 +15,7 @@ export default function OrdersIndex({
     orders: initialOrders,
     filters: initialFilters,
 }) {
+    const { appSettings } = usePage().props || {}
     const queryClient = useQueryClient()
     const [alert, setAlert] = useState(null)
     const [search, setSearch] = useState(initialFilters?.search || '')
@@ -56,12 +58,8 @@ export default function OrdersIndex({
         setLoadingDetails(true)
         try {
             const res = await api.get(`/orders/${order.raw_id}`)
-            const html = buildPrintHTML(res.data.order, {})
-            const w = window.open('', '_blank', 'width=800,height=700')
-            w.document.write(html)
-            w.document.close()
-            w.focus()
-            setTimeout(() => { w.print(); w.close() }, 400)
+            const html = buildPrintHTML(res.data.order, appSettings)
+            silentPrint(html)
         } catch {
             setAlert({ type: 'error', message: 'تعذر تحميل تفاصيل الطلب للطباعة' })
         } finally {

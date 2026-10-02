@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { router } from '@inertiajs/react'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput, Button, Badge } from '../../shared/components'
-import { Plus, Mail, Phone, MapPin, Store, Tag, X, Edit2, Trash2, UploadCloud, Info, Eye, Download } from 'lucide-react'
+import { Plus, Mail, Phone, MapPin, Store, Tag, X, Edit2, Trash2, UploadCloud, Info, Eye, Download, Printer } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function CustomersIndex({ customers: initialCustomers, filters: initialFilters }) {
@@ -15,6 +15,8 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
     const [viewingCustomer, setViewingCustomer] = useState(null)
     const [isImportOpen, setIsImportOpen] = useState(false)
     const [importFile, setImportFile] = useState(null)
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+    const [exportSelectedRegions, setExportSelectedRegions] = useState(['all'])
 
     const [formData, setFormData] = useState({
         name: '',
@@ -183,6 +185,53 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         document.body.removeChild(link)
     }
 
+    const handleExportExcel = async () => {
+        try {
+            const res = await api.post('/customers/export', {
+                region_ids: exportSelectedRegions
+            }, { responseType: 'blob' })
+            
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', 'customers-report.xlsx')
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            setIsExportModalOpen(false)
+        } catch (e) {
+            setAlert({ type: 'error', message: 'حدث خطأ أثناء تصدير الملف' })
+        }
+    }
+
+    const handlePrintPDF = async () => {
+        try {
+            const res = await api.post('/customers/print', {
+                region_ids: exportSelectedRegions
+            })
+            
+            const printWindow = window.open('', '_blank')
+            printWindow.document.write(res.data)
+            printWindow.document.close()
+            setIsExportModalOpen(false)
+        } catch (e) {
+            setAlert({ type: 'error', message: 'حدث خطأ أثناء فتح شاشة الطباعة' })
+        }
+    }
+
+    const toggleExportRegion = (id) => {
+        setExportSelectedRegions(prev => {
+            if (id === 'all') return ['all']
+            const withoutAll = prev.filter(r => r !== 'all')
+            if (withoutAll.includes(id)) {
+                const newArr = withoutAll.filter(r => r !== id)
+                return newArr.length === 0 ? ['all'] : newArr
+            } else {
+                return [...withoutAll, id]
+            }
+        })
+    }
+
     return (
         <AppLayout title="إدارة العملاء" subtitle={`${loadedCustomers.length} عميل مسجل بالنظام`}>
             <div className="space-y-5" dir="rtl">
@@ -220,7 +269,17 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                             className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
                         >
                             <UploadCloud className="w-4.5 h-4.5" />
-                            استيراد من إكسل (CSV)
+                            استيراد (CSV)
+                        </button>
+                        <button
+                            onClick={() => {
+                                setExportSelectedRegions(['all']);
+                                setIsExportModalOpen(true);
+                            }}
+                            className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <Printer className="w-4.5 h-4.5" />
+                            تصدير / طباعة
                         </button>
                         <button
                             onClick={openAddModal}
@@ -735,6 +794,62 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                         كشف الحساب والمديونيات
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* EXPORT MODAL */}
+                {isExportModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#FAF9F6]/70 backdrop-blur-md overflow-y-auto animate-fade-in">
+                        <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-md p-6 sm:p-8 shadow-2xl relative">
+                            <button
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="absolute left-6 top-6 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <h3 className="text-lg font-bold text-[#1A2D23] mb-6 text-right">تصدير وطباعة العملاء</h3>
+                            <p className="text-sm font-semibold text-[#5C5950] text-right mb-4">اختر المناطق المراد تصدير عملائها:</p>
+
+                            <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2" dir="rtl">
+                                <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
+                                        checked={exportSelectedRegions.includes('all')}
+                                        onChange={() => toggleExportRegion('all')}
+                                    />
+                                    <span className="text-sm font-semibold">كل المناطق</span>
+                                </label>
+
+                                {regions.map(r => (
+                                    <label key={r.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
+                                            checked={exportSelectedRegions.includes(r.id)}
+                                            onChange={() => toggleExportRegion(r.id)}
+                                        />
+                                        <span className="text-sm font-semibold">{r.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-3 mt-8">
+                                <button
+                                    onClick={handleExportExcel}
+                                    className="flex-1 py-3.5 rounded-xl font-bold text-sm text-[#2E5A44] bg-[#EBF5EF] hover:bg-[#D7EBE1] transition-all"
+                                >
+                                    تحميل كـ Excel
+                                </button>
+                                <button
+                                    onClick={handlePrintPDF}
+                                    className="flex-1 py-3.5 rounded-xl font-bold text-sm text-white bg-[#2E5A44] hover:bg-[#234735] transition-all shadow-lg shadow-[#2E5A44]/20"
+                                >
+                                    طباعة / PDF
+                                </button>
                             </div>
                         </div>
                     </div>
