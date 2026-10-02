@@ -15,10 +15,32 @@ export default function POSIndex({ products: initialProducts, categories: initia
     const queryClient = useQueryClient()
     const loadMoreRef = useRef(null)
 
-    // Active cart state
-    const [cart, setCart]                         = useState([])
-    const [selectedCustomer, setSelectedCustomer] = useState(null)
+    // Active cart state (persisted in localStorage)
+    const [cart, setCart] = useState(() => {
+        try {
+            const saved = localStorage.getItem('pos_active_cart');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) { return []; }
+    });
+    const [selectedCustomer, setSelectedCustomer] = useState(() => {
+        try {
+            const saved = localStorage.getItem('pos_active_customer');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) { return null; }
+    });
     const [showCart, setShowCart]                 = useState(false)
+
+    useEffect(() => {
+        localStorage.setItem('pos_active_cart', JSON.stringify(cart));
+    }, [cart]);
+
+    useEffect(() => {
+        if (selectedCustomer) {
+            localStorage.setItem('pos_active_customer', JSON.stringify(selectedCustomer));
+        } else {
+            localStorage.removeItem('pos_active_customer');
+        }
+    }, [selectedCustomer]);
 
     // Receipt print preview state
     const [receipt, setReceipt]                   = useState(null)
@@ -478,7 +500,7 @@ export default function POSIndex({ products: initialProducts, categories: initia
                             </div>
                         ) : (
                             <>
-                                <div className="grid grid-cols-3 gap-1.5">
+                                <div className="flex flex-col gap-1.5">
                                     {allProducts.map((product) => (
                                         <POSProductCard
                                             key={product.id}

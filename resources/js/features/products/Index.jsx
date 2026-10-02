@@ -759,6 +759,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>سعر البيع</label>
                                     <input type="number" step="0.01" placeholder="0.00" value={formData.price}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />
@@ -767,6 +768,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>سعر التكلفة</label>
                                     <input type="number" step="0.01" placeholder="0.00" value={formData.cost_price}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, cost_price: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #FDE68A', color: '#1A2D23' }} />
@@ -777,7 +779,8 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>الكمية المتوفرة</label>
-                                    <input type="number" placeholder="0" value={formData.stock}
+                                    <input type="number" step="any" placeholder="0" value={formData.stock}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />
@@ -797,6 +800,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>القطع داخل الوحدة</label>
                                     <input type="number" placeholder="1" value={formData.number_of_items_in_unit}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, number_of_items_in_unit: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />
@@ -941,6 +945,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>سعر البيع</label>
                                     <input type="number" step="0.01" placeholder="0.00" value={formData.price}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />
@@ -949,6 +954,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>سعر التكلفة</label>
                                     <input type="number" step="0.01" placeholder="0.00" value={formData.cost_price}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, cost_price: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #FDE68A', color: '#1A2D23' }} />
@@ -959,7 +965,8 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>الكمية المتوفرة</label>
-                                    <input type="number" placeholder="0" value={formData.stock}
+                                    <input type="number" step="any" placeholder="0" value={formData.stock}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />
@@ -979,6 +986,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                 <div>
                                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5C5950' }}>القطع داخل الوحدة</label>
                                     <input type="number" placeholder="1" value={formData.number_of_items_in_unit}
+                                        onWheel={(e) => e.target.blur()}
                                         onChange={(e) => setFormData(prev => ({ ...prev, number_of_items_in_unit: e.target.value }))}
                                         className="w-full px-4 py-2.5 rounded-xl text-sm transition-all focus:outline-none text-right font-medium"
                                         style={{ backgroundColor: '#F4F3EF', border: '1px solid #E2E0DA', color: '#1A2D23' }} required />

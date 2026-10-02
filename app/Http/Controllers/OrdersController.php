@@ -130,7 +130,7 @@ class OrdersController extends Controller
         $request->validate([
             'items'          => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.quantity'   => 'required|numeric|min:0',
             'reason'         => 'nullable|string|max:500',
         ]);
 
@@ -468,7 +468,7 @@ class OrdersController extends Controller
         $request->validate([
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.quantity'   => 'required|numeric|min:0',
             'reason'             => 'nullable|string|max:500',
         ]);
 
@@ -560,7 +560,7 @@ class OrdersController extends Controller
             $request->validate([
                 'items'              => 'required|array|min:1',
                 'items.*.product_id' => 'required|exists:products,id',
-                'items.*.quantity'   => 'required|integer|min:1',
+                'items.*.quantity'   => 'required|numeric|min:0',
                 'items.*.unit_price' => 'nullable|numeric|min:0',
                 'notes'              => 'nullable|string|max:500',
             ]);
@@ -584,7 +584,7 @@ class OrdersController extends Controller
                 // Validate stock & max_app_order_quantity first
                 foreach ($request->items as $item) {
                     $product = Product::where('id', $item['product_id'])->lockForUpdate()->firstOrFail();
-                    $qty = intval($item['quantity']);
+                    $qty = floatval($item['quantity']);
 
                     // Only enforce max_app_order_quantity for customers
                     $activeOffer = \App\Models\Offer::where('product_id', $product->id)
@@ -658,7 +658,7 @@ class OrdersController extends Controller
 
                 foreach ($request->items as $item) {
                     $product = Product::findOrFail($item['product_id']);
-                    $qty = intval($item['quantity']);
+                    $qty = floatval($item['quantity']);
                     $unitPrice = isset($item['unit_price']) ? floatval($item['unit_price']) : floatval($product->price);
 
                     DB::table('products_orders')->insert([

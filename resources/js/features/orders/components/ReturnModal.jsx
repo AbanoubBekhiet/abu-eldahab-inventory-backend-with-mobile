@@ -17,10 +17,10 @@ export default function ReturnModal({ order, onClose }) {
     }
 
     const selectedItems = Object.entries(quantities)
-        .filter(([, qty]) => parseInt(qty) > 0)
+        .filter(([, qty]) => parseFloat(qty) > 0)
         .map(([productId, qty]) => ({
             product_id: parseInt(productId),
-            quantity: parseInt(qty),
+            quantity: parseFloat(qty),
         }))
 
     const totalRefund = selectedItems.reduce((sum, item) => {
@@ -95,6 +95,7 @@ export default function ReturnModal({ order, onClose }) {
                                             type="number"
                                             min="0"
                                             max={product.available_qty}
+                                            step="any"
                                             value={quantities[product.id] || ''}
                                             onChange={e => setQty(product.id, e.target.value)}
                                             placeholder="0"

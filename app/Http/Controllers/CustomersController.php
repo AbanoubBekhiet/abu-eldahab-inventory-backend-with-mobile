@@ -1187,6 +1187,12 @@ class CustomersController extends Controller
         return response()->json(['success' => false, 'message' => 'لم يتم العثور على المنتج في السلة'], 404);
     }
 
+    public function apiAppUserCartClear(Request $request, $id)
+    {
+        \App\Models\CustomerCart::where('user_id', $id)->delete();
+        return response()->json(['success' => true, 'message' => 'تم تفريغ السلة بنجاح']);
+    }
+
     public function apiAppUserWishlist(Request $request, $id)
     {
         $paginator = \App\Models\Wishlist::with('product')

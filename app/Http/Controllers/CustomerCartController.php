@@ -31,7 +31,7 @@ class CustomerCartController extends Controller
                 'product_id' => $cartItem->product_id,
                 'name' => $product ? $product->name : '—',
                 'price' => $product ? floatval($product->price) : 0,
-                'quantity' => intval($cartItem->quantity),
+                'quantity' => floatval($cartItem->quantity),
                 'image_url' => $imageUrl,
                 'category_name' => $product && $product->category ? $product->category->name : 'بدون قسم',
                 'max_app_order_quantity' => $product ? $product->max_app_order_quantity : null,

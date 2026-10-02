@@ -207,7 +207,7 @@ class OffersController extends Controller
                 'id'                      => $product->id,
                 'name'                    => $product->name,
                 'price'                   => floatval($product->price),
-                'stock'                   => intval($product->stock),
+                'stock'                   => floatval($product->stock),
                 'unit'                    => $product->unit,
                 'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
                 'max_app_order_quantity'  => $product->max_app_order_quantity !== null ? intval($product->max_app_order_quantity) : null,

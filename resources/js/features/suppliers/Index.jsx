@@ -205,12 +205,12 @@ function ReceivedOrderModal({ supplier, products, onClose }) {
                                 {/* Quantity */}
                                 <div className="col-span-3">
                                     <label className={LABEL_CLS} style={LABEL_STYLE}>الكمية</label>
-                                    <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} className={INPUT_CLS} style={INPUT_STYLE} required />
+                                    <input type="number" min="0" step="any" onWheel={(e) => e.target.blur()} value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} className={INPUT_CLS} style={INPUT_STYLE} required />
                                 </div>
                                 {/* Price */}
                                 <div className="col-span-3">
                                     <label className={LABEL_CLS} style={LABEL_STYLE}>سعر الشراء</label>
-                                    <input type="number" min="0" step="0.01" value={item.price} onChange={e => updateItem(idx, 'price', e.target.value)} placeholder="0.00" className={INPUT_CLS} style={INPUT_STYLE} required />
+                                    <input type="number" min="0" step="0.01" onWheel={(e) => e.target.blur()} value={item.price} onChange={e => updateItem(idx, 'price', e.target.value)} placeholder="0.00" className={INPUT_CLS} style={INPUT_STYLE} required />
                                 </div>
                                 {/* Remove */}
                                 <div className="col-span-1 flex justify-center">
@@ -223,7 +223,7 @@ function ReceivedOrderModal({ supplier, products, onClose }) {
                                 {/* Subtotal */}
                                 {item.product_id && item.quantity && item.price && (
                                     <div className="col-span-12 text-left text-xs text-[#2E5A44] font-bold">
-                                        الإجمالي: {(parseFloat(item.price) * parseInt(item.quantity)).toFixed(2)} ج
+                                        الإجمالي: {(parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2)} ج
                                     </div>
                                 )}
                             </div>

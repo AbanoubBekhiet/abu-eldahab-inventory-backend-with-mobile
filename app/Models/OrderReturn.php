@@ -16,6 +16,10 @@ class OrderReturn extends Model
         'reason',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+    ];
+
     public function order()
     {
         return $this->belongsTo(Order::class);

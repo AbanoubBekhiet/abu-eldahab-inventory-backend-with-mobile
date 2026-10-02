@@ -18,16 +18,13 @@ class StatisticsController extends Controller
     public function verifyAdmin(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)
-                    ->where('role', 'admin')
-                    ->first();
+        $user = $request->user();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['ok' => false, 'message' => 'بيانات الاعتماد غير صحيحة أو المستخدم ليس مسؤولاً.'], 401);
+        if (!$user || $user->role !== 'admin' || !Hash::check($request->password, $user->password)) {
+            return response()->json(['ok' => false, 'message' => 'كلمة المرور غير صحيحة.'], 401);
         }
 
         // Store session so the range endpoint keeps working during this visit
@@ -207,16 +204,13 @@ class StatisticsController extends Controller
     public function apiVerifyAdmin(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)
-                    ->where('role', 'admin')
-                    ->first();
+        $user = $request->user();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['ok' => false, 'message' => 'بيانات الاعتماد غير صحيحة أو المستخدم ليس مسؤولاً.'], 401);
+        if (!$user || $user->role !== 'admin' || !Hash::check($request->password, $user->password)) {
+            return response()->json(['ok' => false, 'message' => 'كلمة المرور غير صحيحة.'], 401);
         }
 
         session(['stats_unlocked' => true]);

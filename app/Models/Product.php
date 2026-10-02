@@ -37,6 +37,7 @@ class Product extends Model implements HasMedia
         'max_app_order_quantity' => 'integer',
         'price'                  => 'decimal:2',
         'cost_price'             => 'decimal:2',
+        'stock'                  => 'float',
     ];
 
     public function category(){

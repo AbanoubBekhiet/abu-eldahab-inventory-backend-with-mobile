@@ -175,7 +175,11 @@ export default function Cart({
                     )}
                     {items.length > 0 && (
                         <button
-                            onClick={onClear}
+                            onClick={() => {
+                                if (window.confirm('هل أنت متأكد من تفريغ السلة بالكامل؟')) {
+                                    onClear();
+                                }
+                            }}
                             className="p-1.5 rounded-lg hover:bg-[#FDEEEC] text-[#9A978F] hover:text-[#C0392B] transition-colors"
                             title="تفريغ السلة"
                         >
@@ -290,7 +294,7 @@ export default function Cart({
             </div>
 
             {/* ── Cart Items ── */}
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto px-3 pb-3">
                 {items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full py-12 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-[#FAF9F6] flex items-center justify-center mb-3 border border-[#EAE8E2]">
@@ -300,19 +304,31 @@ export default function Cart({
                         <p className="text-xs text-[#9A978F] mt-1">اضغط على أي منتج لإضافته</p>
                     </div>
                 ) : (
-                    <div className="space-y-1">
-                        {items.map((item) => (
-                            <CartItem
-                                key={item.id}
-                                item={item}
-                                onIncrement={onIncrement}
-                                onDecrement={onDecrement}
-                                onQuantityChange={onQuantityChange}
-                                onRemove={onRemove}
-                                onPriceChange={onPriceChange}
-                            />
-                        ))}
-                    </div>
+                    <table className="w-full text-right border-collapse text-sm">
+                        <thead className="bg-[#FAF9F6] sticky top-0 z-10 shadow-[0_1px_0_#EAE8E2]">
+                            <tr>
+                                <th className="p-2 font-bold text-[#9A978F] w-6 text-center">#</th>
+                                <th className="p-2 font-bold text-[#9A978F]">المنتج</th>
+                                <th className="p-2 font-bold text-[#9A978F] text-center">السعر</th>
+                                <th className="p-2 font-bold text-[#9A978F] text-center">الكمية</th>
+                                <th className="p-2 font-bold text-[#9A978F] text-center">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item, index) => (
+                                <CartItem
+                                    key={item.id}
+                                    index={index + 1}
+                                    item={item}
+                                    onIncrement={onIncrement}
+                                    onDecrement={onDecrement}
+                                    onQuantityChange={onQuantityChange}
+                                    onRemove={onRemove}
+                                    onPriceChange={onPriceChange}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
                 )}
             </div>
 

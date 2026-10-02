@@ -31,7 +31,6 @@ function SectionTitle({ children, sub }) {
 }
 
 function PasswordGate({ onUnlock }) {
-    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
@@ -41,11 +40,11 @@ function PasswordGate({ onUnlock }) {
         setLoading(true)
         setError('')
         try {
-            const res = await api.post('/statistics/verify-admin', { email, password })
+            const res = await api.post('/statistics/verify-admin', { password })
             if (res.data.ok) {
                 onUnlock(res.data.stats)
             } else {
-                setError(res.data.message || 'بيانات غير صحيحة')
+                setError(res.data.message || 'كلمة المرور غير صحيحة')
             }
         } catch (err) {
             setError(err.response?.data?.message || 'حدث خطأ في الاتصال')
@@ -64,17 +63,9 @@ function PasswordGate({ onUnlock }) {
                 </div>
                 <div className="text-center mb-6">
                     <h2 className="text-xl font-bold" style={{ color: '#1A2D23' }}>صفحة محمية</h2>
-                    <p className="text-sm mt-1" style={{ color: '#9A978F' }}>أدخل بيانات حساب المسؤول للمتابعة</p>
+                    <p className="text-sm mt-1" style={{ color: '#9A978F' }}>أدخل كلمة المرور للمتابعة</p>
                 </div>
                 <form onSubmit={submit} className="rounded-2xl p-6 space-y-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EAE8E2' }}>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold" style={{ color: '#5C5950' }}>البريد الإلكتروني</label>
-                        <input type="email" required value={email}
-                            onChange={e => { setEmail(e.target.value); setError('') }}
-                            placeholder="admin@example.com"
-                            className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                            style={{ backgroundColor: '#F4F3EF', border: '1.5px solid #E2E0DA', color: '#1A2D23' }} />
-                    </div>
                     <div className="space-y-1">
                         <label className="text-xs font-bold" style={{ color: '#5C5950' }}>كلمة المرور</label>
                         <input type="password" required value={password}

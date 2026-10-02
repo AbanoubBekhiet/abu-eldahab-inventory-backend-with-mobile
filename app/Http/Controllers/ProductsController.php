@@ -67,7 +67,7 @@ class ProductsController extends Controller
                 'description'             => $product->description,
                 'is_available_on_app'     => (bool) $product->is_available_on_app,
                 'max_app_order_quantity'  => $product->max_app_order_quantity !== null ? intval($product->max_app_order_quantity) : null,
-                'stock'                   => intval($product->stock),
+                'stock'                   => floatval($product->stock),
                 'unit'                    => $product->unit,
                 'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
                 'category_id'             => $product->category_id,
@@ -98,7 +98,7 @@ class ProductsController extends Controller
             'name'                   => 'required|string|max:255',
             'price'                  => 'required|numeric|min:0',
             'cost_price'             => 'nullable|numeric|min:0',
-            'stock'                  => 'required|integer|min:0',
+            'stock'                  => 'required|numeric|min:0',
             'unit'                   => 'required|in:شكارة,علبة,كرتونة,شريط,دستة,لفة,قطعة',
             'number_of_items_in_unit'=> 'required|integer|min:1',
             'category_id'            => 'required|exists:categories,id',
@@ -133,7 +133,7 @@ class ProductsController extends Controller
             'name'                   => 'required|string|max:255',
             'price'                  => 'required|numeric|min:0',
             'cost_price'             => 'nullable|numeric|min:0',
-            'stock'                  => 'required|integer|min:0',
+            'stock'                  => 'required|numeric|min:0',
             'unit'                   => 'required|in:شكارة,علبة,كرتونة,شريط,دستة,لفة,قطعة',
             'number_of_items_in_unit'=> 'required|integer|min:1',
             'category_id'            => 'required|exists:categories,id',
@@ -270,7 +270,7 @@ class ProductsController extends Controller
                 }
 
                 $costPrice      = isset($map['cost_price']) && isset($row[$map['cost_price']]) ? floatval(trim($row[$map['cost_price']] ?? '0')) : 0;
-                $stock          = isset($map['stock']) && isset($row[$map['stock']]) ? intval(trim($row[$map['stock']] ?? '0')) : 0;
+                $stock          = isset($map['stock']) && isset($row[$map['stock']]) ? floatval(trim($row[$map['stock']] ?? '0')) : 0;
                 $unit           = isset($map['unit']) && isset($row[$map['unit']]) ? trim($row[$map['unit']] ?? '') : 'علبة';
                 if (!in_array($unit, $validUnits)) { $unit = 'علبة'; }
                 $numberOfItems  = isset($map['number_of_items_in_unit']) && isset($row[$map['number_of_items_in_unit']]) ? intval(trim($row[$map['number_of_items_in_unit']] ?? '1')) : 1;
@@ -351,7 +351,7 @@ class ProductsController extends Controller
                     'description'             => $product->description,
                     'is_available_on_app'     => (bool) $product->is_available_on_app,
                     'max_app_order_quantity'  => $product->max_app_order_quantity !== null ? intval($product->max_app_order_quantity) : null,
-                    'stock'                   => intval($product->stock),
+                    'stock'                   => floatval($product->stock),
                     'unit'                    => $product->unit,
                     'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
                     'category_id'             => $product->category_id,
@@ -394,7 +394,7 @@ class ProductsController extends Controller
                 'description'             => $product->description,
                 'is_available_on_app'     => (bool) $product->is_available_on_app,
                 'max_app_order_quantity'  => $product->max_app_order_quantity !== null ? intval($product->max_app_order_quantity) : null,
-                'stock'                   => intval($product->stock),
+                'stock'                   => floatval($product->stock),
                 'unit'                    => $product->unit,
                 'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
                 'category_id'             => $product->category_id,
@@ -439,7 +439,7 @@ class ProductsController extends Controller
             'name'                   => 'required|string|max:255',
             'price'                  => 'required|numeric|min:0',
             'cost_price'             => 'nullable|numeric|min:0',
-            'stock'                  => 'required|integer|min:0',
+            'stock'                  => 'required|numeric|min:0',
             'unit'                   => 'required|string|max:50',
             'number_of_items_in_unit'=> 'required|integer|min:1',
             'category_id'            => 'required|exists:categories,id',
@@ -486,7 +486,7 @@ class ProductsController extends Controller
             'name'                   => 'sometimes|required|string|max:255',
             'price'                  => 'sometimes|required|numeric|min:0',
             'cost_price'             => 'nullable|numeric|min:0',
-            'stock'                  => 'nullable|integer|min:0',
+            'stock'                  => 'nullable|numeric|min:0',
             'unit'                   => 'nullable|string|max:50',
             'number_of_items_in_unit'=> 'nullable|integer|min:1',
             'category_id'            => 'nullable|exists:categories,id',
@@ -655,7 +655,7 @@ class ProductsController extends Controller
                 }
 
                 $costPrice      = isset($map['cost_price']) && isset($row[$map['cost_price']]) ? floatval(trim($row[$map['cost_price']] ?? '0')) : 0;
-                $stock          = isset($map['stock']) && isset($row[$map['stock']]) ? intval(trim($row[$map['stock']] ?? '0')) : 0;
+                $stock          = isset($map['stock']) && isset($row[$map['stock']]) ? floatval(trim($row[$map['stock']] ?? '0')) : 0;
                 $unit           = isset($map['unit']) && isset($row[$map['unit']]) ? trim($row[$map['unit']] ?? '') : 'علبة';
                 if (!in_array($unit, $validUnits)) { $unit = 'علبة'; }
                 $numberOfItems  = isset($map['number_of_items_in_unit']) && isset($row[$map['number_of_items_in_unit']]) ? intval(trim($row[$map['number_of_items_in_unit']] ?? '1')) : 1;

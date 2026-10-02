@@ -174,8 +174,8 @@ export default function ReceiveOrder({
         setErrorMessage('')
     }
 
-    const totalUnits = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0)
-    const totalAmount = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0) * (parseFloat(item.price) || 0), 0)
+    const totalUnits = items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0)
+    const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0), 0)
 
     const receiveMutation = useMutation({
         mutationFn: async (payload) => {
@@ -203,7 +203,7 @@ export default function ReceiveOrder({
             return
         }
 
-        const validItems = items.filter(it => it.product_id && parseInt(it.quantity) > 0 && it.price !== '')
+        const validItems = items.filter(it => it.product_id && parseFloat(it.quantity) > 0 && it.price !== '')
         if (validItems.length === 0) {
             setErrorMessage('يرجى إضافة صنف واحد على الأقل مع تحديد الكمية وسعر الشراء.')
             return
@@ -353,7 +353,9 @@ export default function ReceiveOrder({
                                             <div className="relative">
                                                 <input
                                                     type="number"
-                                                    min="1"
+                                                    min="0"
+                                                    step="any"
+                                                    onWheel={(e) => e.target.blur()}
                                                     value={item.quantity}
                                                     onChange={e => updateItem(idx, 'quantity', e.target.value)}
                                                     className="w-full h-11 px-3 rounded-xl border border-[#D6D4CE] bg-white text-sm font-bold text-[#1A2D23] focus:outline-none focus:border-[#2E5A44]"
@@ -374,6 +376,7 @@ export default function ReceiveOrder({
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
+                                                onWheel={(e) => e.target.blur()}
                                                 value={item.price}
                                                 onChange={e => updateItem(idx, 'price', e.target.value)}
                                                 placeholder="0.00"
@@ -398,7 +401,7 @@ export default function ReceiveOrder({
                                         {/* Subtotal line */}
                                         {item.product_id && item.quantity && item.price !== '' && (
                                             <div className="col-span-12 text-left text-xs font-bold text-[#2E5A44] pt-1 border-t border-[#EAE8E2]/60">
-                                                إجمالي الصنف: {(parseFloat(item.price) * parseInt(item.quantity || 0)).toFixed(2)} ج.م
+                                                إجمالي الصنف: {(parseFloat(item.price) * parseFloat(item.quantity || 0)).toFixed(2)} ج.م
                                             </div>
                                         )}
                                     </div>

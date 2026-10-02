@@ -288,7 +288,7 @@ class SuppliersController extends Controller
             'payment_type'       => 'required|in:cash,credit',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.quantity'   => 'required|numeric|min:0',
             'items.*.price'      => 'required|numeric|min:0',
         ]);
 
@@ -660,7 +660,7 @@ class SuppliersController extends Controller
             'payment_type'       => 'required|in:cash,credit',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.quantity'   => 'required|numeric|min:0',
             'items.*.price'      => 'required|numeric|min:0',
         ]);
 

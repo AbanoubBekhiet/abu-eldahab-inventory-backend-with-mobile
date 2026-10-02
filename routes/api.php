@@ -128,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/active-carts', [CustomersController::class, 'apiActiveCarts']);
         Route::get('/app-users/{user}/orders', [CustomersController::class, 'apiCustomerOrders']);
         Route::get('/app-users/{user}/cart', [CustomersController::class, 'apiAppUserCart']);
+        Route::delete('/app-users/{user}/cart', [CustomersController::class, 'apiAppUserCartClear']);
         Route::delete('/app-users/{user}/cart/{product}', [CustomersController::class, 'apiAppUserCartDelete']);
         Route::get('/app-users/{user}/wishlist', [CustomersController::class, 'apiAppUserWishlist']);
 

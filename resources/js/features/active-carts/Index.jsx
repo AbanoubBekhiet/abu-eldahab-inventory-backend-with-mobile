@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput } from '../../shared/components'
-import { ShoppingCart, Store, Phone, Eye, X, Image as ImageIcon } from 'lucide-react'
+import { ShoppingCart, Store, Phone, Eye, X, Image as ImageIcon, Trash2 } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function ActiveCartsIndex() {
     const [search, setSearch] = useState('')
     const [viewingCart, setViewingCart] = useState(null)
+    const queryClient = useQueryClient()
 
     // React Query: Fetch Active Carts
     const { data: cartsData, isLoading } = useQuery({
@@ -16,6 +17,35 @@ export default function ActiveCartsIndex() {
             const res = await api.get('/active-carts', { params: { search: search || undefined } })
             return res.data
         },
+    })
+
+    const removeCartItemMutation = useMutation({
+        mutationFn: async ({ userId, productId }) => {
+            const res = await api.delete(`/app-users/${userId}/cart/${productId}`)
+            return res.data
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries(['active_carts'])
+            setViewingCart(prev => {
+                if (!prev) return null;
+                const newItems = prev.items.filter(i => i.id !== variables.productId);
+                if (newItems.length === 0) return null; // Close modal if empty
+                return { ...prev, items: newItems };
+            });
+        },
+        onError: () => alert('حدث خطأ أثناء الحذف')
+    })
+
+    const clearCartMutation = useMutation({
+        mutationFn: async (userId) => {
+            const res = await api.delete(`/app-users/${userId}/cart`)
+            return res.data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(['active_carts'])
+            setViewingCart(null)
+        },
+        onError: () => alert('حدث خطأ أثناء تفريغ السلة')
     })
 
     const activeCarts = cartsData?.active_carts?.data || []
@@ -116,10 +146,24 @@ export default function ActiveCartsIndex() {
 
                             <div className="p-6 overflow-y-auto text-right space-y-4 flex-1">
                                 <h4 className="font-bold text-sm text-[#1A2D23] mb-2 flex items-center justify-between">
-                                    <span>محتويات السلة</span>
-                                    <span className="text-xs px-2 py-1 bg-[#EEF4F1] text-[#2E5A44] rounded-full">
-                                        {viewingCart.items.length} أصناف
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span>محتويات السلة</span>
+                                        <span className="text-xs px-2 py-1 bg-[#EEF4F1] text-[#2E5A44] rounded-full">
+                                            {viewingCart.items.length} أصناف
+                                        </span>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            if(window.confirm('هل أنت متأكد من تفريغ سلة هذا العميل بالكامل؟')) {
+                                                clearCartMutation.mutate(viewingCart.user.id);
+                                            }
+                                        }}
+                                        disabled={clearCartMutation.isPending}
+                                        className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        تفريغ السلة
+                                    </button>
                                 </h4>
                                 
                                 <div className="space-y-3">
@@ -143,6 +187,14 @@ export default function ActiveCartsIndex() {
                                                     </span>
                                                 </div>
                                             </div>
+                                            <button 
+                                                onClick={() => removeCartItemMutation.mutate({ userId: viewingCart.user.id, productId: item.id })}
+                                                disabled={removeCartItemMutation.isPending}
+                                                className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                                                title="حذف المنتج من السلة"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
