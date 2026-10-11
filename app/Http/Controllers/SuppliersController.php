@@ -29,7 +29,7 @@ class SuppliersController extends Controller
             });
         }
 
-        $paginator = $query->latest()->simplePaginate(15);
+        $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
 
         $suppliers = collect($paginator->items())->map(fn($s) => [
             'id'                    => $s->id,
@@ -109,6 +109,7 @@ class SuppliersController extends Controller
         $paginator = $supplier->receivedOrders()
             ->with('items.product')
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $orders = collect($paginator->items())->map(fn($o) => [
@@ -441,6 +442,7 @@ class SuppliersController extends Controller
         $paginator = SupplierTransaction::where('supplier_id', $supplier->id)
             ->with('receivedOrder')
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(20);
 
         $transactions = collect($paginator->items())->map(function ($t) {
@@ -524,7 +526,7 @@ class SuppliersController extends Controller
             });
         }
 
-        $paginator = $query->latest()->simplePaginate(15);
+        $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
         $suppliers = collect($paginator->items())->map(fn($s) => [
             'id'                   => $s->id,
             'name'                 => $s->name,
@@ -602,6 +604,7 @@ class SuppliersController extends Controller
         $paginator = $supplier->receivedOrders()
             ->with('items.product')
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $orders = collect($paginator->items())->map(fn($o) => [
@@ -814,6 +817,7 @@ class SuppliersController extends Controller
     {
         $paginator = SupplierTransaction::where('supplier_id', $supplier->id)
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(20);
 
         $transactions = collect($paginator->items())->map(function ($t) {

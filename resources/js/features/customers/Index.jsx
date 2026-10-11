@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { router } from '@inertiajs/react'
 import AppLayout from '../../shared/layouts/AppLayout'
@@ -28,17 +28,77 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
     })
     const [formErrors, setFormErrors] = useState({})
 
-    // React Query: Fetch Customers
+    // Infinite scroll page state
+    const [page, setPage] = useState(1)
+    const [allCustomers, setAllCustomers] = useState(() => {
+        if (initialCustomers?.data) return initialCustomers.data
+        if (Array.isArray(initialCustomers)) return initialCustomers
+        return []
+    })
+    const [hasMore, setHasMore] = useState(() => initialCustomers?.next_page_url != null || initialCustomers?.next_page != null)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const loadMoreRef = useRef(null)
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setAllCustomers([])
+        setHasMore(true)
+        setPage(1)
+    }, [search])
+
+    const fetchCustomers = useCallback(async (pageNum) => {
+        const res = await api.get('/customers', {
+            params: {
+                search: search || undefined,
+                page: pageNum,
+            }
+        })
+        return res.data
+    }, [search])
+
+    // React Query: Fetch first page
     const { data: customersData, isLoading: isCustomersLoading } = useQuery({
         queryKey: ['customers', search],
-        queryFn: async () => {
-            const res = await api.get('/customers', { params: { search: search || undefined } })
-            return res.data
-        },
-        initialData: initialCustomers ? { customers: initialCustomers } : undefined,
+        queryFn: async () => fetchCustomers(1),
+        placeholderData: (!search) ? {
+            customers: initialCustomers,
+        } : undefined,
+        staleTime: 0,
     })
 
-    const loadedCustomers = customersData?.customers?.data || customersData?.data || []
+    // Seed allCustomers on first page
+    useEffect(() => {
+        if (!customersData) return
+        const data = customersData.customers?.data || customersData?.data || []
+        setAllCustomers(data)
+        setHasMore(!!(customersData.customers?.next_page_url || customersData.customers?.next_page))
+        setPage(1)
+    }, [customersData])
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isCustomersLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchCustomers(nextPage).then(res => {
+                        const more = res.customers?.data || res.data || []
+                        setAllCustomers(prev => [...prev, ...more])
+                        setHasMore(!!(res.customers?.next_page_url || res.customers?.next_page))
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isCustomersLoading, page, fetchCustomers])
+
+    const loadedCustomers = allCustomers
 
     // React Query: Fetch Regions
     const { data: regionsData } = useQuery({
@@ -408,6 +468,19 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                     </div>
                                 </div>
                         ))}
+                    </div>
+                    
+                    {/* Infinite Scroll Sentinel */}
+                    <div ref={loadMoreRef} className="py-6 flex justify-center">
+                        {(isLoadingMore || (isCustomersLoading && loadedCustomers.length > 0)) && (
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE8E2] shadow-sm">
+                                <div className="w-4 h-4 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-xs font-bold text-[#5C5950]">جاري تحميل المزيد...</span>
+                            </div>
+                        )}
+                        {!hasMore && loadedCustomers.length > 0 && (
+                            <span className="text-xs font-bold text-[#9A978F]">تم تحميل جميع العملاء</span>
+                        )}
                     </div>
                 </>
             )}

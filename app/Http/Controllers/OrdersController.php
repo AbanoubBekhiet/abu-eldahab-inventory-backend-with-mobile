@@ -370,6 +370,10 @@ class OrdersController extends Controller
             $query->where('user_id', $request->user()->id);
         }
 
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', '%' . $search . '%')

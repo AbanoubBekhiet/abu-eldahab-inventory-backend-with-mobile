@@ -28,6 +28,12 @@ class OrderObserver
     public function created(Order $order): void
     {
         try {
+            // Only send notifications for orders placed from the mobile app, not from POS/system
+            if (($order->source ?? null) !== 'app') {
+                Log::info("[OrderObserver] Order #{$order->id} source is '" . ($order->source ?? 'null') . "' (not mobile app) — skipping admin notification.");
+                return;
+            }
+
             $orderLabel = '#ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
             $customerName = $order->user ? $order->user->name : 'عميل';
             $totalAmount = number_format((float) $order->total_price, 2);

@@ -73,22 +73,26 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                             <table className="w-full border-collapse border-[1.5px] border-black text-[12px] sm:text-[13px] text-right">
                                 <tbody>
                                     <tr>
-                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[18%]">العميل</th>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[25%]">العميل</th>
                                         <td className="p-2 border border-black font-bold">
                                             {order.customer || order.customer_name || 'عميل نقدي'}
                                         </td>
-                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[15%]">التاريخ</th>
-                                        <td className="p-2 border border-black font-bold w-[22%]">{order.date}</td>
+                                    </tr>
+                                    <tr>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
+                                        <td className="p-2 border border-black font-bold" dir="ltr">
+                                            {order.customer_phone || order.customer_phone_number || order.phone || ''}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th className="bg-[#f5f5f5] p-2 border border-black font-bold">العنوان</th>
                                         <td className="p-2 border border-black">
                                             {order.customer_address && order.customer_address !== '—' ? order.customer_address : ''}
                                         </td>
-                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
-                                        <td className="p-2 border border-black font-bold" dir="ltr">
-                                            {order.customer_phone || order.customer_phone_number || order.phone || ''}
-                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التاريخ</th>
+                                        <td className="p-2 border border-black font-bold">{order.date}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -137,11 +141,6 @@ export default function OrderDetailsModal({ order, onClose, onDiscount, onReturn
                                     </td>
                                     <td className="py-2 px-1 text-center text-[#111] border border-black">
                                         {p.quantity}{p.unit ? ' ' + p.unit : ''}
-                                        {parseInt(p.number_of_items_in_unit || 0) > 1 && (
-                                            <div className="text-[10px] text-[#777]">
-                                                ({parseInt(p.number_of_items_in_unit) * p.quantity} قطعة)
-                                            </div>
-                                        )}
                                     </td>
                                     <td className="py-2 px-1 text-center text-[#111] border border-black">
                                         {parseFloat(p.price || 0).toFixed(2)}
@@ -329,12 +328,10 @@ export function buildPrintHTML(order, appSettings = {}) {
         const price = parseFloat(p.price || 0);
         const totalPrice = parseFloat(p.total_price || (qty * price));
         const unitLabel = p.unit ? ` ${p.unit}` : '';
-        const pieces = parseInt(p.number_of_items_in_unit || 0);
-        const piecesLabel = pieces > 1 ? `<br><small style="color:#777;font-size:11px">(${pieces * qty} قطعة)</small>` : '';
         return `
         <tr>
             <td style="text-align:right">${idx + 1} - ${p.name}</td>
-            <td>${qty}${unitLabel}${piecesLabel}</td>
+            <td>${qty}${unitLabel}</td>
             <td>${price.toFixed(2)}</td>
             <td>${totalPrice.toFixed(2)}</td>
         </tr>`;
@@ -450,16 +447,20 @@ export function buildPrintHTML(order, appSettings = {}) {
             <h1 style="font-size:24px; margin-top:0px; margin-bottom:10px;">${receipt_name || 'فاتورة طلب'}</h1>
             <table style="width:100%; border-collapse:collapse; border: 1.5px solid #000; font-size:12px;">
                 <tr>
-                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold; width:18%;">العميل</th>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold; width:25%;">العميل</th>
                     <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;">${customer}</td>
-                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold; width:15%;">التاريخ</th>
-                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right; width:22%;">${date}</td>
+                </tr>
+                <tr>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">التليفون</th>
+                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;" dir="ltr">${customerPhone || ''}</td>
                 </tr>
                 <tr>
                     <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">العنوان</th>
                     <td style="padding:4px; border:1px solid #000; text-align:right;">${address && address !== '—' ? address : ''}</td>
-                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">التليفون</th>
-                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;" dir="ltr">${customerPhone || ''}</td>
+                </tr>
+                <tr>
+                    <th style="background:#f5f5f5; padding:4px; border:1px solid #000; text-align:right; font-weight:bold;">التاريخ</th>
+                    <td style="padding:4px; border:1px solid #000; font-weight:bold; text-align:right;">${date}</td>
                 </tr>
             </table>
         </div>

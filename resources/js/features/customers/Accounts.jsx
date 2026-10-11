@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@inertiajs/react'
 import AppLayout from '../../shared/layouts/AppLayout'
@@ -13,20 +13,78 @@ export default function Accounts({ customers: initialCustomers, globalStats: ini
     const [alert, setAlert] = useState(null)
     const [search, setSearch] = useState(initialFilters?.search || '')
 
+    // Infinite scroll page state
+    const [page, setPage] = useState(1)
+    const [allCustomers, setAllCustomers] = useState(() => {
+        if (initialCustomers?.data) return initialCustomers.data
+        if (Array.isArray(initialCustomers)) return initialCustomers
+        return []
+    })
+    const [hasMore, setHasMore] = useState(() => initialCustomers?.next_page_url != null || initialCustomers?.next_page != null)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const loadMoreRef = useRef(null)
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setAllCustomers([])
+        setHasMore(true)
+        setPage(1)
+    }, [search])
+
+    const fetchAccounts = useCallback(async (pageNum) => {
+        const res = await api.get('/customers-accounts', {
+            params: {
+                search: search || undefined,
+                page: pageNum,
+            }
+        })
+        return res.data
+    }, [search])
+
     // React Query: Fetch Customer Accounts
     const { data: accountsData, isLoading } = useQuery({
         queryKey: ['customers-accounts', search],
-        queryFn: async () => {
-            const res = await api.get('/customers-accounts', { params: { search: search || undefined } })
-            return res.data
-        },
-        initialData: initialCustomers ? {
+        queryFn: async () => fetchAccounts(1),
+        placeholderData: (!search) ? {
             customers: initialCustomers,
             globalStats: initialGlobalStats,
         } : undefined,
+        staleTime: 0,
     })
 
-    const loadedCustomers = accountsData?.customers?.data || accountsData?.data || []
+    // Seed allCustomers on first page
+    useEffect(() => {
+        if (!accountsData) return
+        const data = accountsData.customers?.data || accountsData?.data || []
+        setAllCustomers(data)
+        setHasMore(!!(accountsData.customers?.next_page_url || accountsData.customers?.next_page))
+        setPage(1)
+    }, [accountsData])
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchAccounts(nextPage).then(res => {
+                        const more = res.customers?.data || res.data || []
+                        setAllCustomers(prev => [...prev, ...more])
+                        setHasMore(!!(res.customers?.next_page_url || res.customers?.next_page))
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isLoading, page, fetchAccounts])
+
+    const loadedCustomers = allCustomers
     const globalStats = accountsData?.globalStats || {}
 
     return (
@@ -177,6 +235,18 @@ export default function Accounts({ customers: initialCustomers, globalStats: ini
                             ))}
                         </div>
 
+                        {/* Infinite Scroll Sentinel */}
+                        <div ref={loadMoreRef} className="py-6 flex justify-center">
+                            {(isLoadingMore || (isLoading && loadedCustomers.length > 0)) && (
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE8E2] shadow-sm">
+                                    <div className="w-4 h-4 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                                    <span className="text-xs font-bold text-[#5C5950]">جاري تحميل المزيد...</span>
+                                </div>
+                            )}
+                            {!hasMore && loadedCustomers.length > 0 && (
+                                <span className="text-xs font-bold text-[#9A978F]">تم تحميل جميع الحسابات</span>
+                            )}
+                        </div>
                     </>
                 )}
             </div>

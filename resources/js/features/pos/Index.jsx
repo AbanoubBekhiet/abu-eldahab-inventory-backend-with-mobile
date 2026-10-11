@@ -584,22 +584,26 @@ export default function POSIndex({ products: initialProducts, categories: initia
                                     <table className="w-full border-collapse border-[1.5px] border-black text-[12px] sm:text-[13px] text-right">
                                         <tbody>
                                             <tr>
-                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[18%]">العميل</th>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[25%]">العميل</th>
                                                 <td className="p-2 border border-black font-bold">
                                                     {receipt.customer_name || 'عميل نقدي'}
                                                 </td>
-                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold w-[15%]">التاريخ</th>
-                                                <td className="p-2 border border-black font-bold w-[22%]">{receipt.date}</td>
+                                            </tr>
+                                            <tr>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
+                                                <td className="p-2 border border-black font-bold" dir="ltr">
+                                                    {receipt.customer_phone || receipt.customer_phone_number || receipt.phone || ''}
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <th className="bg-[#f5f5f5] p-2 border border-black font-bold">العنوان</th>
                                                 <td className="p-2 border border-black">
                                                     {receipt.customer_address && receipt.customer_address !== '—' ? receipt.customer_address : ''}
                                                 </td>
-                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التليفون</th>
-                                                <td className="p-2 border border-black font-bold" dir="ltr">
-                                                    {receipt.customer_phone || receipt.customer_phone_number || receipt.phone || ''}
-                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th className="bg-[#f5f5f5] p-2 border border-black font-bold">التاريخ</th>
+                                                <td className="p-2 border border-black font-bold">{receipt.date}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -641,11 +645,6 @@ export default function POSIndex({ products: initialProducts, categories: initia
                                             <td className="py-2 px-1 text-right text-[#111] border border-black">{idx + 1} - {item.name}</td>
                                             <td className="py-2 px-1 text-center text-[#111] border border-black">
                                                 {item.quantity}{item.unit ? ' ' + item.unit : ''}
-                                                {parseInt(item.number_of_items_in_unit || 0) > 1 && (
-                                                    <div className="text-[10px] text-[#777]">
-                                                        ({parseInt(item.number_of_items_in_unit) * item.quantity} قطعة)
-                                                    </div>
-                                                )}
                                             </td>
                                             <td className="py-2 px-1 text-center text-[#111] border border-black">
                                                 {parseFloat(item.price).toFixed(2)}

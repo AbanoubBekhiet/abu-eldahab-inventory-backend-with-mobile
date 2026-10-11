@@ -68,7 +68,7 @@ class CustomersController extends Controller
             });
         }
         
-        $paginator = $query->latest()->simplePaginate(15);
+        $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
         
         $customers = collect($paginator->items())->map(function($user) {
             // Customers registered from the app have a profile with latitude/longitude or a password (self-registered)
@@ -222,6 +222,7 @@ class CustomersController extends Controller
         $paginator = \App\Models\Order::with(['products', 'returns'])
             ->where('user_id', $id)
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $orders = collect($paginator->items())->map(function ($order) {
@@ -585,6 +586,7 @@ class CustomersController extends Controller
 
         $paginator = $user->transactions()
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(20);
 
         $transactions = collect($paginator->items())->map(function ($t) use ($id) {
@@ -693,7 +695,7 @@ class CustomersController extends Controller
             });
         }
         
-        $paginator = $query->latest()->simplePaginate(15);
+        $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
         $customers = collect($paginator->items())->map(function ($user) {
             $hasPassword = !empty($user->password);
             $hasCoords   = $user->profile?->latitude !== null || $user->profile?->longitude !== null;
@@ -836,6 +838,7 @@ class CustomersController extends Controller
         $paginator = \App\Models\Order::with(['products', 'returns'])
             ->where('user_id', $id)
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $orders = collect($paginator->items())->map(function ($order) {
@@ -1005,6 +1008,7 @@ class CustomersController extends Controller
 
         $paginator = $user->transactions()
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(20);
 
         $transactions = collect($paginator->items())->map(function ($t) use ($id) {
@@ -1098,7 +1102,7 @@ class CustomersController extends Controller
     {
         $search = $request->input('search');
 
-        $query = User::where('role', 'customer')
+        $query = User::whereIn('role', ['customer', 'admin', 'sub_admin'])
             ->whereNotNull('password') // registered from app
             ->with(['profile.region']);
 
@@ -1113,7 +1117,7 @@ class CustomersController extends Controller
             });
         }
 
-        $paginator = $query->latest()->simplePaginate(15);
+        $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
 
         $users = collect($paginator->items())->map(function($user) {
             return [
@@ -1144,6 +1148,7 @@ class CustomersController extends Controller
         $paginator = \App\Models\CustomerCart::with('product')
             ->where('user_id', $id)
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $items = collect($paginator->items())->map(function($cart) {
@@ -1198,6 +1203,7 @@ class CustomersController extends Controller
         $paginator = \App\Models\Wishlist::with('product')
             ->where('user_id', $id)
             ->latest()
+            ->orderByDesc('id')
             ->simplePaginate(15);
 
         $items = collect($paginator->items())->map(function($wishlist) {
