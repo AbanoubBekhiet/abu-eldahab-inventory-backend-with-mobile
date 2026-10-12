@@ -502,23 +502,32 @@ class ProductsController extends Controller
         if ($request->has('price')) {
             $fields['price'] = floatval($request->price);
         }
-        if ($request->has('is_available_on_app')) {
-            $fields['is_available_on_app'] = $request->boolean('is_available_on_app');
-        }
         if ($request->has('name')) {
             $fields['name'] = $request->name;
         }
         if ($request->has('cost_price')) {
-            $fields['cost_price'] = $request->cost_price;
+            $fields['cost_price'] = $request->filled('cost_price') ? floatval($request->cost_price) : 0;
         }
         if ($request->has('stock')) {
-            $fields['stock'] = $request->stock;
+            $fields['stock'] = floatval($request->stock);
         }
         if ($request->has('unit')) {
             $fields['unit'] = $request->unit;
         }
+        if ($request->has('number_of_items_in_unit')) {
+            $fields['number_of_items_in_unit'] = intval($request->number_of_items_in_unit);
+        }
         if ($request->has('category_id')) {
             $fields['category_id'] = $request->category_id;
+        }
+        if ($request->has('description')) {
+            $fields['description'] = $request->description;
+        }
+        if ($request->has('is_available_on_app')) {
+            $fields['is_available_on_app'] = $request->boolean('is_available_on_app');
+        }
+        if ($request->has('max_app_order_quantity')) {
+            $fields['max_app_order_quantity'] = $request->filled('max_app_order_quantity') ? intval($request->max_app_order_quantity) : null;
         }
 
         if (!empty($fields)) {
@@ -530,10 +539,39 @@ class ProductsController extends Controller
             $product->addMediaFromRequest('image')->toMediaCollection('products');
         }
 
+        $product->load(['category', 'media', 'activeOffer']);
+        $media = $product->getFirstMedia('products');
+        $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+        $activeOffer = $product->activeOffer;
+
+        $formattedProduct = [
+            'id'                      => $product->id,
+            'name'                    => $product->name,
+            'price'                   => floatval($product->price),
+            'cost_price'              => floatval($product->cost_price),
+            'description'             => $product->description,
+            'is_available_on_app'     => (bool) $product->is_available_on_app,
+            'max_app_order_quantity'  => $product->max_app_order_quantity !== null ? intval($product->max_app_order_quantity) : null,
+            'stock'                   => floatval($product->stock),
+            'unit'                    => $product->unit,
+            'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
+            'category_id'             => $product->category_id,
+            'category_name'           => $product->category ? $product->category->name : 'بدون قسم',
+            'image_url'               => $imageUrl,
+            'active_offer'            => $activeOffer ? [
+                'id'                  => $activeOffer->id,
+                'offer_price'         => floatval($activeOffer->offer_price),
+                'original_price'      => floatval($activeOffer->original_price),
+                'discount_percentage' => $activeOffer->original_price > 0 ? round((1 - $activeOffer->offer_price / $activeOffer->original_price) * 100) : 0,
+                'expires_at'          => $activeOffer->expires_at->toIso8601String(),
+                'offer_max_quantity'  => $activeOffer->offer_max_quantity,
+            ] : null,
+        ];
+
         return response()->json([
             'success' => true,
             'message' => 'تم تحديث المنتج بنجاح!',
-            'product' => $product,
+            'product' => $formattedProduct,
         ]);
     }
 

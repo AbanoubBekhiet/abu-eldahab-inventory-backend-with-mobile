@@ -9,15 +9,31 @@ class Cart extends Model
     //
     protected $fillable = [
         'user_id',
+        'customer_id',
         'product_id',
         'quantity',
         'price',
         'total_price',
     ];
-    public function user(){
+
+    protected $casts = [
+        'quantity'    => 'float',
+        'price'       => 'float',
+        'total_price' => 'float',
+    ];
+
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
-    public function product(){
+
+    public function customer()
+    {
+        return $this->belongsTo(User::class, 'customer_id');
+    }
+
+    public function product()
+    {
         return $this->belongsTo(Product::class);
     }
 }

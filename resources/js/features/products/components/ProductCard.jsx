@@ -2,7 +2,7 @@ import { Badge } from '../../../shared/components'
 import { Edit2, Trash2, Tag } from 'lucide-react'
 import { getLogoUrl } from '../../../shared/services/api'
 
-export default function ProductCard({ product, onAddToCart, onEdit, onDelete, onAddOffer }) {
+export default function ProductCard({ product, index, onAddToCart, onEdit, onDelete, onAddOffer }) {
     return (
         <div
             className="rounded-2xl overflow-hidden group transition-all duration-300 hover:shadow-lg text-right cursor-pointer"
@@ -30,6 +30,14 @@ export default function ProductCard({ product, onAddToCart, onEdit, onDelete, on
                     )}
                 </div>
 
+                {index !== undefined && (
+                    <div className="absolute top-3 left-3 z-10">
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-[#1A2D23]/80 backdrop-blur-sm text-white shadow-sm font-mono" dir="ltr">
+                            #{index + 1}
+                        </span>
+                    </div>
+                )}
+
                 {product.stock <= 5 && product.stock > 0 && (
                     <div className="absolute top-3 right-3">
                         <Badge variant="warning">مخزون منخفض</Badge>
@@ -44,7 +52,14 @@ export default function ProductCard({ product, onAddToCart, onEdit, onDelete, on
 
             {/* Info */}
             <div className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-right" style={{ color: '#9A978F' }}>{product.category_name}</p>
+                <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-right" style={{ color: '#9A978F' }}>{product.category_name}</p>
+                    {index !== undefined && (
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-[#FAF9F6] border border-[#EAE8E2] text-[#5C5950] font-mono" dir="ltr">
+                            #{index + 1}
+                        </span>
+                    )}
+                </div>
                 <h3 className="text-sm font-bold mt-1 line-clamp-1 transition-colors text-right" style={{ color: '#1A2D23' }}>
                     {product.name}
                 </h3>

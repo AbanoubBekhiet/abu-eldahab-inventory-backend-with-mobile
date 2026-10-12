@@ -10,37 +10,52 @@ import { Minimize2, ArrowLeft, RefreshCw, ShoppingBag, Printer, X, Check, AlertC
 import { buildPrintHTML, silentPrint } from '../orders/components/OrderDetailsModal'
 import api from '../../shared/services/api'
 
-export default function POSIndex({ products: initialProducts, categories: initialCategories, customers: initialCustomers, pendingCarts: initialPendingCarts }) {
+export default function POSIndex({ 
+    products: initialProducts, 
+    categories: initialCategories, 
+    customers: initialCustomers, 
+    pendingCarts: initialPendingCarts,
+    activeCart: initialActiveCart = [],
+    activeCustomer: initialActiveCustomer = null,
+}) {
     const { appSettings } = usePage().props || {}
     const queryClient = useQueryClient()
     const loadMoreRef = useRef(null)
 
-    // Active cart state (persisted in localStorage)
-    const [cart, setCart] = useState(() => {
-        try {
-            const saved = localStorage.getItem('pos_active_cart');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) { return []; }
-    });
-    const [selectedCustomer, setSelectedCustomer] = useState(() => {
-        try {
-            const saved = localStorage.getItem('pos_active_customer');
-            return saved ? JSON.parse(saved) : null;
-        } catch (e) { return null; }
-    });
+    // Active cart state (persisted in database carts table)
+    const [cart, setCart] = useState(() => initialActiveCart || [])
+    const [selectedCustomer, setSelectedCustomer] = useState(() => initialActiveCustomer || null)
     const [showCart, setShowCart]                 = useState(false)
 
-    useEffect(() => {
-        localStorage.setItem('pos_active_cart', JSON.stringify(cart));
-    }, [cart]);
+    const isInitialMount = useRef(true)
 
+    // Debounce cart & customer sync to backend carts table
     useEffect(() => {
-        if (selectedCustomer) {
-            localStorage.setItem('pos_active_customer', JSON.stringify(selectedCustomer));
-        } else {
-            localStorage.removeItem('pos_active_customer');
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            // Clear deprecated localStorage items if present
+            try {
+                localStorage.removeItem('pos_active_cart')
+                localStorage.removeItem('pos_active_customer')
+            } catch (e) {}
+            return
         }
-    }, [selectedCustomer]);
+
+        const timer = setTimeout(() => {
+            api.post('/pos/sync-cart', {
+                customer_id: selectedCustomer?.id || null,
+                items: cart.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity,
+                    price: item.price,
+                }))
+            }).catch(err => {
+                console.error('Failed to sync POS cart to database:', err)
+            })
+        }, 400)
+
+        return () => clearTimeout(timer)
+    }, [cart, selectedCustomer])
 
     // Receipt print preview state
     const [receipt, setReceipt]                   = useState(null)
@@ -303,6 +318,9 @@ export default function POSIndex({ products: initialProducts, categories: initia
     const clearCart = () => {
         setCart([])
         setSelectedCustomer(null)
+        api.post('/pos/clear-cart').catch(err => {
+            console.error('Failed to clear POS cart in database:', err)
+        })
     }
 
     // Save cart as pending

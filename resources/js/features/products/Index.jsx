@@ -4,7 +4,7 @@ import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import ProductCard from './components/ProductCard'
 import CategoryFilter from './components/CategoryFilter'
-import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag, Printer } from 'lucide-react'
+import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag, Printer, ChevronUp, ChevronDown } from 'lucide-react'
 import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function ProductsIndex({ products: initialProducts, total_count: initialTotalCount, categories: initialCategories, filters: initialFilters }) {
@@ -19,6 +19,40 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const [imagePreview, setImagePreview] = useState(null)
     const [isImportOpen, setIsImportOpen] = useState(false)
     const [importFile, setImportFile] = useState(null)
+
+    // Floating Side Scroll State & Handlers
+    const [scrollProgress, setScrollProgress] = useState(0)
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop
+            const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+            if (scrollHeight > 0) {
+                setScrollProgress(Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100))))
+            } else {
+                setScrollProgress(0)
+            }
+        }
+
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        handleScroll()
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const scrollToBottom = () => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+    }
+
+    const handleTrackClick = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const clickRatio = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+        window.scrollTo({ top: clickRatio * scrollHeight, behavior: 'smooth' })
+    }
 
     // Offer Modal State
     const [offerProduct, setOfferProduct] = useState(null)
@@ -159,13 +193,16 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         staleTime: 0,
     })
 
-    // Seed allProducts on first page
+    // Seed and sync allProducts on first page
     useEffect(() => {
         if (!productsData) return
-        const data = productsData.products?.data || []
-        setAllProducts(data)
+        const firstPageData = productsData.products?.data || []
+        setAllProducts(prev => {
+            if (!prev || prev.length === 0) return firstPageData
+            const firstPageMap = new Map(firstPageData.map(item => [item.id, item]))
+            return prev.map(item => firstPageMap.has(item.id) ? firstPageMap.get(item.id) : item)
+        })
         setHasMore(!!productsData.products?.next_page)
-        setPage(1)
     }, [productsData])
 
     // Infinite scroll observer
@@ -237,6 +274,9 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
             setAlert({ type: 'success', message: data.message || 'تم تحديث المنتج بنجاح!' })
             setEditingProduct(null)
             setImagePreview(null)
+            if (data.product) {
+                setAllProducts(prev => prev.map(p => p.id === data.product.id ? data.product : p))
+            }
             queryClient.invalidateQueries({ queryKey: ['products'] })
         },
         onError: (err) => {
@@ -334,7 +374,13 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         setFormErrors({})
         const payload = new FormData()
         Object.keys(formData).forEach(key => {
-            if (formData[key] !== null) payload.append(key, formData[key])
+            if (formData[key] !== null && formData[key] !== undefined) {
+                if (key === 'is_available_on_app') {
+                    payload.append(key, formData[key] ? '1' : '0')
+                } else {
+                    payload.append(key, formData[key])
+                }
+            }
         })
         addMutation.mutate(payload)
     }
@@ -345,7 +391,13 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
         const payload = new FormData()
         payload.append('_method', 'PUT')
         Object.keys(formData).forEach(key => {
-            if (formData[key] !== null) payload.append(key, formData[key])
+            if (formData[key] !== null && formData[key] !== undefined) {
+                if (key === 'is_available_on_app') {
+                    payload.append(key, formData[key] ? '1' : '0')
+                } else {
+                    payload.append(key, formData[key])
+                }
+            }
         })
         editMutation.mutate({ id: editingProduct.id, payload })
     }
@@ -514,9 +566,10 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
             {viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {loadedProducts.map((product, i) => (
-                        <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                        <div key={product.id}>
                             <ProductCard 
                                 product={product} 
+                                index={i}
                                 onEdit={openEditModal}
                                 onDelete={handleDelete}
                                 onAddOffer={openOfferModal}
@@ -534,6 +587,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                     <table className="w-full text-right">
                         <thead>
                             <tr className="border-b border-[#EAE8E2]" style={{ backgroundColor: '#FAF9F6' }}>
+                                <th className="text-center text-xs font-semibold text-[#9A978F] uppercase tracking-wider px-3 py-3 w-14">#</th>
                                 <th className="text-right text-xs font-semibold text-[#9A978F] uppercase tracking-wider px-6 py-3">المنتج</th>
                                 <th className="text-right text-xs font-semibold text-[#9A978F] uppercase tracking-wider px-6 py-3 hidden sm:table-cell">القسم</th>
                                 <th className="text-right text-xs font-semibold text-[#9A978F] uppercase tracking-wider px-6 py-3">سعر البيع</th>
@@ -543,8 +597,13 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             </tr>
                         </thead>
                         <tbody>
-                            {loadedProducts.map((product) => (
+                            {loadedProducts.map((product, i) => (
                                 <tr key={product.id} className="border-b border-[#FAF9F6] hover:bg-[#FAF9F6]/50 transition-colors">
+                                    <td className="px-3 py-4 text-center">
+                                        <span className="text-xs font-bold text-[#2E5A44] bg-[#EBF5EF] px-2 py-0.5 rounded-md font-mono" dir="ltr">
+                                            #{i + 1}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             {product.image_url ? (
@@ -609,7 +668,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             ))}
                             {loadedProducts.length === 0 && (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-sm font-semibold text-[#9A978F]">
+                                    <td colSpan="7" className="px-6 py-12 text-center text-sm font-semibold text-[#9A978F]">
                                         لم يتم العثور على أي منتج مطابق للبحث
                                     </td>
                                 </tr>
@@ -847,6 +906,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                             onChange={(e) => setFormData(prev => ({ ...prev, max_app_order_quantity: e.target.value }))}
                                             className="w-full px-3 py-2 rounded-xl text-xs bg-white border border-[#EAE8E2]"
                                         />
+                                        {formErrors.max_app_order_quantity && <p className="text-xs text-[#C0392B] mt-1">{formErrors.max_app_order_quantity}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -1033,6 +1093,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                                             onChange={(e) => setFormData(prev => ({ ...prev, max_app_order_quantity: e.target.value }))}
                                             className="w-full px-3 py-2 rounded-xl text-xs bg-white border border-[#EAE8E2]"
                                         />
+                                        {formErrors.max_app_order_quantity && <p className="text-xs text-[#C0392B] mt-1">{formErrors.max_app_order_quantity}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -1254,6 +1315,55 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                     </div>
                 </div>
             )}
+
+            {/* Floating Side Scroll Controller */}
+            <div 
+                className="fixed left-5 sm:left-7 bottom-8 z-30 flex flex-col items-center gap-1.5 p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#EAE8E2] transition-all duration-300 hover:shadow-2xl select-none"
+                style={{ direction: 'rtl' }}
+            >
+                {/* Scroll to Top Button */}
+                <button
+                    type="button"
+                    onClick={scrollToTop}
+                    className="p-2.5 rounded-xl hover:bg-[#EBF5EF] text-[#5C5950] hover:text-[#2E5A44] transition-all active:scale-90 group relative flex items-center justify-center cursor-pointer"
+                    title="الصعود لأول الصفحة"
+                >
+                    <ChevronUp className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
+                    <span className="absolute left-full ml-2.5 px-2.5 py-1 bg-[#1A2D23] text-white text-[11px] font-bold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+                        أول الصفحة
+                    </span>
+                </button>
+
+                {/* Interactive Scroll Progress Track */}
+                <div 
+                    onClick={handleTrackClick}
+                    className="w-2 h-20 bg-[#F4F3EF] hover:bg-[#EAE8E2] rounded-full overflow-hidden relative my-0.5 cursor-pointer transition-colors group relative"
+                    title={`انقر للتنقل السريع (${scrollProgress}%)`}
+                >
+                    <div
+                        className="w-full bg-[#2E5A44] rounded-full transition-all duration-150 pointer-events-none"
+                        style={{ height: `${scrollProgress}%` }}
+                    />
+                </div>
+
+                {/* Percentage Display */}
+                <span className="text-[10px] font-bold text-[#7C7870] font-mono leading-none py-0.5" dir="ltr">
+                    {scrollProgress}%
+                </span>
+
+                {/* Scroll to Bottom Button */}
+                <button
+                    type="button"
+                    onClick={scrollToBottom}
+                    className="p-2.5 rounded-xl hover:bg-[#EBF5EF] text-[#5C5950] hover:text-[#2E5A44] transition-all active:scale-90 group relative flex items-center justify-center cursor-pointer"
+                    title="النزول لآخر الصفحة"
+                >
+                    <ChevronDown className="w-5 h-5 transition-transform group-hover:translate-y-0.5" />
+                    <span className="absolute left-full ml-2.5 px-2.5 py-1 bg-[#1A2D23] text-white text-[11px] font-bold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+                        آخر الصفحة
+                    </span>
+                </button>
+            </div>
         </AppLayout>
     )
 }

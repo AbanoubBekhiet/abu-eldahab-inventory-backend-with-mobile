@@ -13,7 +13,7 @@ class Product extends Model implements HasMedia
     protected static function booted()
     {
         static::saving(function ($product) {
-            if ($product->stock <= 0) {
+            if ($product->stock <= 0 && !$product->isDirty('is_available_on_app')) {
                 $product->is_available_on_app = false;
             }
         });

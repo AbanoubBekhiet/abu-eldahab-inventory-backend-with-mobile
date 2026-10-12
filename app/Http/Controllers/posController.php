@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Cart;
 use App\Models\PendingCart;
 use App\Models\PendingCartItem;
 use App\Models\Product;
@@ -16,6 +17,68 @@ use Inertia\Inertia;
 
 class posController extends Controller
 {
+    /**
+     * Retrieve active cart items and selected customer from carts table for a staff user.
+     */
+    private function getActiveCartData($userId)
+    {
+        if (!$userId) {
+            return ['items' => [], 'customer' => null];
+        }
+
+        $cartRows = Cart::with(['product.media', 'product.category'])
+            ->where('user_id', $userId)
+            ->get();
+
+        $items = [];
+        $customerId = null;
+
+        foreach ($cartRows as $row) {
+            if ($row->customer_id && !$customerId) {
+                $customerId = $row->customer_id;
+            }
+
+            if ($row->product_id && $row->product) {
+                $product = $row->product;
+                $media = $product->getFirstMedia('products');
+                $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+
+                $items[] = [
+                    'id'                      => $product->id,
+                    'name'                    => $product->name,
+                    'price'                   => floatval($row->price),
+                    'cost_price'              => floatval($product->cost_price),
+                    'stock'                   => floatval($product->stock),
+                    'unit'                    => $product->unit,
+                    'number_of_items_in_unit' => intval($product->number_of_items_in_unit),
+                    'category_name'           => optional($product->category)->name ?? 'بدون قسم',
+                    'image_url'               => $imageUrl,
+                    'quantity'                => floatval($row->quantity),
+                ];
+            }
+        }
+
+        $activeCustomer = null;
+        if ($customerId) {
+            $customer = User::where('id', $customerId)
+                ->withSum('transactions as balance', 'amount')
+                ->first();
+
+            if ($customer) {
+                $activeCustomer = [
+                    'id'      => $customer->id,
+                    'name'    => $customer->name,
+                    'balance' => floatval($customer->balance ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'items'    => $items,
+            'customer' => $activeCustomer,
+        ];
+    }
+
     public function pos(Request $request)
     {
         $customers = User::where('role', 'customer')
@@ -61,11 +124,16 @@ class posController extends Controller
             ->latest()
             ->get();
 
+        $userId = $request->user()?->id ?? auth()->id();
+        $activeCartData = $this->getActiveCartData($userId);
+
         return Inertia::render('pos/Index', [
-            'customers'    => $customers,
-            'products'     => $products,
-            'categories'   => $categories,
-            'pendingCarts' => $pendingCarts,
+            'customers'      => $customers,
+            'products'       => $products,
+            'categories'     => $categories,
+            'pendingCarts'   => $pendingCarts,
+            'activeCart'     => $activeCartData['items'],
+            'activeCustomer' => $activeCartData['customer'],
         ]);
     }
 
@@ -101,6 +169,12 @@ class posController extends Controller
                     'price'           => $item['price'],
                     'total_price'     => $item['price'] * $item['quantity'],
                 ]);
+            }
+
+            // Clear working cart in database
+            $userId = auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
             }
 
             DB::commit();
@@ -184,6 +258,22 @@ class posController extends Controller
 
             // 4. Delete the resumed cart from the database
             $resumedCart->delete();
+
+            // 5. Update working cart in database with resumed cart items
+            $userId = auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
+                foreach ($resumedCart->items as $item) {
+                    Cart::create([
+                        'user_id'     => $userId,
+                        'customer_id' => $resumedCart->customer_id,
+                        'product_id'  => $item->product_id,
+                        'quantity'    => $item->quantity,
+                        'price'       => $item->price,
+                        'total_price' => $item->price * $item->quantity,
+                    ]);
+                }
+            }
 
             DB::commit();
 
@@ -353,8 +443,13 @@ class posController extends Controller
                 'credit_used'       => $creditUsed,
             ];
 
-            DB::commit();
+            // Clear working cart in database
+            $userId = auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
+            }
 
+            DB::commit();
             session()->flash('completed_order', $completedOrderDetails);
             session()->flash('success', 'تم تسجيل الطلب وخصم الكميات بنجاح');
         } catch (\Exception $e) {
@@ -409,11 +504,16 @@ class posController extends Controller
             ->latest()
             ->get();
 
+        $userId = $request->user()?->id ?? auth()->id();
+        $activeCartData = $this->getActiveCartData($userId);
+
         return response()->json([
-            'customers'    => $customers,
-            'products'     => $products,
-            'categories'   => $categories,
-            'pendingCarts' => $pendingCarts,
+            'customers'      => $customers,
+            'products'       => $products,
+            'categories'     => $categories,
+            'pendingCarts'   => $pendingCarts,
+            'activeCart'     => $activeCartData['items'],
+            'activeCustomer' => $activeCartData['customer'],
         ]);
     }
 
@@ -445,6 +545,12 @@ class posController extends Controller
                     'price'           => $item['price'],
                     'total_price'     => $item['price'] * $item['quantity'],
                 ]);
+            }
+
+            // Clear working cart in database
+            $userId = $request->user()?->id ?? auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
             }
 
             DB::commit();
@@ -520,7 +626,24 @@ class posController extends Controller
                 'items'    => $formattedItems,
             ];
 
+            // Delete the resumed cart from pending_carts
             $resumedCart->delete();
+
+            // Update working cart in database with resumed cart items
+            $userId = $request->user()?->id ?? auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
+                foreach ($resumedCart->items as $item) {
+                    Cart::create([
+                        'user_id'     => $userId,
+                        'customer_id' => $resumedCart->customer_id,
+                        'product_id'  => $item->product_id,
+                        'quantity'    => $item->quantity,
+                        'price'       => $item->price,
+                        'total_price' => $item->price * $item->quantity,
+                    ]);
+                }
+            }
 
             DB::commit();
 
@@ -666,6 +789,12 @@ class posController extends Controller
                 'credit_used'       => $creditUsed,
             ];
 
+            // Clear working cart in database
+            $userId = $request->user()?->id ?? auth()->id();
+            if ($userId) {
+                Cart::where('user_id', $userId)->delete();
+            }
+
             DB::commit();
 
             return response()->json([
@@ -680,5 +809,75 @@ class posController extends Controller
                 'message' => 'حدث خطأ أثناء إتمام الطلب: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Synchronize the working POS cart to the database carts table.
+     */
+    public function apiSyncCart(Request $request)
+    {
+        $userId = $request->user()?->id ?? auth()->id();
+        if (!$userId) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 401);
+        }
+
+        $request->validate([
+            'customer_id'       => 'nullable|exists:users,id',
+            'items'             => 'nullable|array',
+            'items.*.id'        => 'required|exists:products,id',
+            'items.*.quantity'  => 'required|numeric|min:0.001',
+            'items.*.price'     => 'required|numeric|min:0',
+        ]);
+
+        $items = $request->input('items', []);
+        $customerId = $request->input('customer_id');
+
+        DB::transaction(function () use ($userId, $items, $customerId) {
+            Cart::where('user_id', $userId)->delete();
+
+            if (!empty($items)) {
+                $insertData = [];
+                $now = now();
+                foreach ($items as $item) {
+                    $qty = floatval($item['quantity']);
+                    $price = floatval($item['price']);
+                    $insertData[] = [
+                        'user_id'     => $userId,
+                        'customer_id' => $customerId,
+                        'product_id'  => $item['id'],
+                        'quantity'    => $qty,
+                        'price'       => $price,
+                        'total_price' => $qty * $price,
+                        'created_at'  => $now,
+                        'updated_at'  => $now,
+                    ];
+                }
+                Cart::insert($insertData);
+            } elseif ($customerId) {
+                Cart::create([
+                    'user_id'     => $userId,
+                    'customer_id' => $customerId,
+                    'product_id'  => null,
+                    'quantity'    => 0,
+                    'price'       => 0,
+                    'total_price' => 0,
+                ]);
+            }
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Clear all rows in carts table for the current user.
+     */
+    public function apiClearCart(Request $request)
+    {
+        $userId = $request->user()?->id ?? auth()->id();
+        if ($userId) {
+            Cart::where('user_id', $userId)->delete();
+        }
+
+        return response()->json(['success' => true]);
     }
 }

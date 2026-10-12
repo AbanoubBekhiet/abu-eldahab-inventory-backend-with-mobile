@@ -78,9 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // POS Endpoints
         Route::get('/pos', [posController::class, 'apiPos']);
-        Route::post('/pos/update-cart-item', [posController::class, 'apiUpdateCartItem']);
-        Route::delete('/pos/delete-cart-item/{cartId}', [posController::class, 'apiDeleteCartItem']);
-        Route::post('/pos/clear-cart/{cartId}', [posController::class, 'apiClearCart']);
+        Route::post('/pos/sync-cart', [posController::class, 'apiSyncCart']);
+        Route::post('/pos/clear-cart', [posController::class, 'apiClearCart']);
         Route::post('/pos/pending-carts', [posController::class, 'apiSaveCart']);
         Route::delete('/pos/pending-carts/{id}', [posController::class, 'apiDeletePendingCart']);
         Route::post('/pos/pending-carts/swap', [posController::class, 'apiSwapCarts']);
