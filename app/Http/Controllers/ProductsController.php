@@ -307,11 +307,23 @@ class ProductsController extends Controller
         $search = $request->input('search');
         $categoryId = $request->input('category_id');
         $forApp = $request->boolean('for_app');
+        $stockStatus = $request->input('stock_status');
+        $appStatus = $request->input('app_status');
 
         $query = Product::with(['category', 'media', 'activeOffer']);
 
         if ($forApp || ($request->user() && $request->user()->isCustomer())) {
             $query->where('is_available_on_app', 1);
+        } elseif ($appStatus === 'available') {
+            $query->where('is_available_on_app', 1);
+        } elseif ($appStatus === 'unavailable') {
+            $query->where('is_available_on_app', 0);
+        }
+
+        if ($stockStatus === 'out_of_stock') {
+            $query->where('stock', '<=', 0);
+        } elseif ($stockStatus === 'in_stock') {
+            $query->where('stock', '>', 0);
         }
 
         if ($search) {

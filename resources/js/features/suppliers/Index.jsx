@@ -1,3 +1,4 @@
+import ProductSearchSelect from '../../shared/components/ProductSearchSelect'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { router, usePage } from '@inertiajs/react'
@@ -29,106 +30,6 @@ function Notice({ message, type, onClose }) {
     )
 }
 
-// ── Searchable Product Select ──────────────────────────────────────────────
-function ProductSearchSelect({ products, value, onChange }) {
-    const [search, setSearch] = useState('')
-    const [isOpen, setIsOpen] = useState(false)
-    const containerRef = useRef(null)
-
-    const selectedProduct = products.find(p => String(p.id) === String(value))
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
-                setIsOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.unit && p.unit.toLowerCase().includes(search.toLowerCase()))
-    )
-
-    const getProductLabel = (p) => {
-        if (!p) return ''
-        return p.unit ? `${p.name} (${p.unit})` : p.name
-    }
-
-    return (
-        <div ref={containerRef} className="relative w-full text-right">
-            <label className={LABEL_CLS} style={LABEL_STYLE}>المنتج *</label>
-            <div className="relative">
-                <input
-                    type="text"
-                    value={isOpen ? search : getProductLabel(selectedProduct)}
-                    onChange={(e) => {
-                        setSearch(e.target.value)
-                        if (!isOpen) setIsOpen(true)
-                    }}
-                    onFocus={() => {
-                        setSearch('')
-                        setIsOpen(true)
-                    }}
-                    placeholder={selectedProduct ? getProductLabel(selectedProduct) : "ابحث عن المنتج..."}
-                    className={INPUT_CLS + " pl-8 text-xs sm:text-sm font-semibold"}
-                    style={INPUT_STYLE}
-                />
-                <Search className="w-4 h-4 text-[#9A978F] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                {value && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            onChange('')
-                            setSearch('')
-                            setIsOpen(true)
-                        }}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9A978F] hover:text-[#C0392B] p-0.5 rounded"
-                        title="إلغاء التحديد"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                )}
-            </div>
-
-            {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-[#EAE8E2] rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-[#FAF9F6] text-right">
-                    {filteredProducts.length === 0 ? (
-                        <div className="p-3 text-xs text-[#9A978F] text-center">لا يوجد منتج مطابق للبحث</div>
-                    ) : (
-                        filteredProducts.map(p => (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => {
-                                    onChange(p.id)
-                                    setSearch('')
-                                    setIsOpen(false)
-                                }}
-                                className={`w-full text-right px-3 py-2 text-xs transition-colors hover:bg-[#EEF4F1] flex items-center justify-between gap-2 ${
-                                    String(value) === String(p.id) ? 'bg-[#EEF4F1] font-bold text-[#2E5A44]' : 'text-[#1A2D23]'
-                                }`}
-                            >
-                                <span className="font-bold truncate">
-                                    {p.name}
-                                    {p.unit && <span className="text-[11px] font-semibold text-[#2E5A44] mr-1.5">({p.unit})</span>}
-                                </span>
-                                <span className="text-[10px] text-[#7C7870] flex-shrink-0 bg-[#FAF9F6] px-2 py-0.5 rounded-md border border-[#EAE8E2]">
-                                    {p.unit && <span className="text-[#2E5A44] font-bold ml-1">الوحدة: {p.unit} | </span>}
-                                    مخزون: <strong className="text-[#2E5A44]">{p.stock}</strong> | تكلفة: <strong>{p.cost_price || p.price || 0}ج</strong>
-                                </span>
-                            </button>
-                        ))
-                    )}
-                </div>
-            )}
-        </div>
-    )
-}
-
-// ── Received Order Modal ──────────────────────────────────────────────────
 function ReceivedOrderModal({ supplier, products, onClose }) {
     const queryClient = useQueryClient()
     const [items, setItems]       = useState([{ product_id: '', quantity: 1, price: '' }])
@@ -139,11 +40,11 @@ function ReceivedOrderModal({ supplier, products, onClose }) {
     const addItem    = () => setItems([...items, { product_id: '', quantity: 1, price: '' }])
     const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx))
 
-    const updateItem = (idx, field, value) => {
+    const updateItem = (idx, field, value, prodObj = null) => {
         const next = [...items]
         next[idx] = { ...next[idx], [field]: value }
-        if (field === 'product_id' && value) {
-            const prod = products.find(p => p.id === parseInt(value))
+        if (field === 'product_id') {
+            const prod = prodObj || products.find(p => p.id === parseInt(value))
             if (prod) next[idx].price = prod.cost_price ?? prod.price ?? ''
         }
         setItems(next)
@@ -199,7 +100,7 @@ function ReceivedOrderModal({ supplier, products, onClose }) {
                                     <ProductSearchSelect
                                         products={products}
                                         value={item.product_id}
-                                        onChange={(val) => updateItem(idx, 'product_id', val)}
+                                        onChange={(val, prod) => updateItem(idx, 'product_id', val, prod)}
                                     />
                                 </div>
                                 {/* Quantity */}

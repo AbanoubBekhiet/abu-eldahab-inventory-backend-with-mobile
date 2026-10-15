@@ -60,7 +60,7 @@ export default function ProductCard({ product, index, onAddToCart, onEdit, onDel
                         </span>
                     )}
                 </div>
-                <h3 className="text-sm font-bold mt-1 line-clamp-1 transition-colors text-right" style={{ color: '#1A2D23' }}>
+                <h3 className="text-xs sm:text-sm font-bold mt-1 transition-colors text-right break-words leading-snug line-clamp-none min-h-[1.5rem]" style={{ color: '#1A2D23' }}>
                     {product.name}
                 </h3>
 

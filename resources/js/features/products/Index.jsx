@@ -12,6 +12,8 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const [alert, setAlert] = useState(null)
     const [search, setSearch] = useState(initialFilters?.search || '')
     const [selectedCategory, setSelectedCategory] = useState(initialFilters?.category_id || 'all')
+    const [stockFilter, setStockFilter] = useState(initialFilters?.stock_status || 'all')
+    const [appFilter, setAppFilter] = useState(initialFilters?.app_status || 'all')
     const [viewMode, setViewMode] = useState('grid')
     
     const [isAddOpen, setIsAddOpen] = useState(false)
@@ -163,29 +165,31 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const loadMoreRef = useRef(null)
 
-    // Reset pagination when search or category changes
+    // Reset pagination when search, category, or filters change
     useEffect(() => {
         setAllProducts([])
         setHasMore(true)
         setPage(1)
-    }, [search, selectedCategory])
+    }, [search, selectedCategory, stockFilter, appFilter])
 
     const fetchProducts = useCallback(async (pageNum) => {
         const res = await api.get('/products', {
             params: {
                 search: search || undefined,
                 category_id: selectedCategory !== 'all' ? selectedCategory : undefined,
+                stock_status: stockFilter !== 'all' ? stockFilter : undefined,
+                app_status: appFilter !== 'all' ? appFilter : undefined,
                 page: pageNum,
             }
         })
         return res.data
-    }, [search, selectedCategory])
+    }, [search, selectedCategory, stockFilter, appFilter])
 
     // React Query: Fetch first page
     const { data: productsData, isLoading: isProductsLoading } = useQuery({
-        queryKey: ['products', search, selectedCategory],
+        queryKey: ['products', search, selectedCategory, stockFilter, appFilter],
         queryFn: async () => fetchProducts(1),
-        placeholderData: (!search && selectedCategory === 'all') ? {
+        placeholderData: (!search && selectedCategory === 'all' && stockFilter === 'all' && appFilter === 'all') ? {
             products: initialProducts,
             total_count: initialTotalCount,
             categories: initialCategories,
@@ -529,15 +533,53 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                     </div>
                 </div>
 
-                {/* Bottom Row: Search and Action Buttons */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1">
+                {/* Bottom Row: Search, Filters and Action Buttons */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2.5 flex-1">
                         <SearchInput
                             placeholder="البحث عن المنتجات..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full sm:w-72"
+                            className="w-full sm:w-64"
                         />
+
+                        {/* فلتر حالة المخزون (Select: الترتيب الطبيعي / منفذتش / نفذت) */}
+                        <div className="relative">
+                            <select
+                                value={stockFilter}
+                                onChange={(e) => setStockFilter(e.target.value)}
+                                className="h-11 px-3.5 pl-8 rounded-xl border border-[#D6D4CE] bg-white text-xs sm:text-sm font-bold text-[#1A2D23] focus:outline-none focus:border-[#2E5A44] transition-colors appearance-none cursor-pointer"
+                            >
+                                <option value="all">الترتيب الطبيعي</option>
+                                <option value="in_stock">منفذتش (متوفر)</option>
+                                <option value="out_of_stock">نفذت (غير متوفر)</option>
+                            </select>
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#7C7870]">
+                                <ChevronDown className="w-4 h-4" />
+                            </div>
+                        </div>
+
+                        {/* فلتر معروض في التطبيق (دائرة مليانة / فاضية) */}
+                        <button
+                            type="button"
+                            onClick={() => setAppFilter(prev => prev === 'available' ? 'all' : 'available')}
+                            className={`h-11 px-3.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer select-none active:scale-95 ${
+                                appFilter === 'available'
+                                    ? 'bg-[#EEF4F1] border-[#ADCBBB] text-[#2E5A44] shadow-sm'
+                                    : 'bg-white border-[#D6D4CE] text-[#5C5950] hover:bg-[#FAF9F6]'
+                            }`}
+                        >
+                            <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                appFilter === 'available'
+                                    ? 'border-[#2E5A44] bg-[#2E5A44]'
+                                    : 'border-[#9A978F] bg-transparent'
+                            }`}>
+                                {appFilter === 'available' && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                )}
+                            </span>
+                            <span>معروض في التطبيق</span>
+                        </button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -936,33 +978,56 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
 
             {/* EDIT MODAL with BLURRED BACKGROUND */}
             {editingProduct && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#FAF9F6]/70 backdrop-blur-md overflow-y-auto animate-fade-in">
-                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm overflow-y-auto animate-fade-in">
+                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-2xl p-5 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto">
                         <button
                             onClick={() => setEditingProduct(null)}
-                            className="absolute left-6 top-6 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
+                            className="absolute left-5 top-5 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
-                        <h3 className="text-lg font-bold text-[#1A2D23] mb-6 text-right">تعديل المنتج</h3>
+                        <div className="flex items-center justify-between mb-4 text-right" dir="rtl">
+                            <h3 className="text-lg font-bold text-[#1A2D23]">تعديل المنتج</h3>
+                            <span className="text-xs font-semibold text-[#7C7870] bg-[#FAF9F6] px-2.5 py-1 rounded-lg border border-[#EAE8E2] max-w-[200px] truncate">
+                                {editingProduct.name}
+                            </span>
+                        </div>
 
                         <form onSubmit={handleEditSubmit} className="space-y-5 text-right" dir="rtl">
+                            {/* Product Image Header (Full Display + Mobile Friendly) */}
                             <div>
-                                <label className="block text-sm font-semibold mb-2" style={{ color: '#5C5950' }}>صورة المنتج</label>
-                                <div className="flex items-center justify-center w-full">
-                                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-[#FAF9F6] transition-colors" style={{ borderColor: '#E2E0DA' }}>
-                                        {imagePreview ? (
-                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-2xl" />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                <UploadCloud className="w-8 h-8 text-[#9A978F] mb-2" />
-                                                <p className="text-xs font-semibold text-[#5C5950]">اضغط لرفع صورة منتج جديدة</p>
-                                                <p className="text-[10px] text-[#B8B5AE] mt-1">PNG, JPG أو GIF بحد أقصى 2 ميجابايت</p>
-                                            </div>
-                                        )}
-                                        <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                                    </label>
+                                <label className="block text-xs sm:text-sm font-bold mb-2 text-[#5C5950]">صورة المنتج</label>
+                                <div className="relative group w-full h-44 sm:h-56 bg-[#FAF9F6] border-2 border-dashed border-[#D6D4CE] hover:border-[#2E5A44] rounded-2xl overflow-hidden transition-all flex flex-col items-center justify-center p-2">
+                                    {imagePreview ? (
+                                        <>
+                                            <img
+                                                src={imagePreview}
+                                                alt="Preview"
+                                                className="w-full h-full object-contain rounded-xl"
+                                            />
+                                            <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity backdrop-blur-[2px]">
+                                                <div className="bg-white text-[#1A2D23] px-4 py-2 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2 hover:bg-[#FAF9F6] active:scale-95 transition-transform">
+                                                    <UploadCloud className="w-4 h-4 text-[#2E5A44]" />
+                                                    تغيير صورة المنتج
+                                                </div>
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                            </label>
+                                            {/* Mobile always-visible change button */}
+                                            <label className="sm:hidden absolute bottom-2 right-2 bg-white/95 text-[#1A2D23] px-3 py-1.5 rounded-lg text-[11px] font-bold shadow border border-[#EAE8E2] flex items-center gap-1.5 cursor-pointer active:scale-95">
+                                                <UploadCloud className="w-3.5 h-3.5 text-[#2E5A44]" />
+                                                تغيير الصورة
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                            </label>
+                                        </>
+                                    ) : (
+                                        <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer p-4 text-center">
+                                            <UploadCloud className="w-9 h-9 text-[#9A978F] mb-2" />
+                                            <p className="text-xs font-bold text-[#2E5A44]">اضغط لإضافة أو تصوير صورة للمنتج</p>
+                                            <p className="text-[10px] text-[#9A978F] mt-1">تظهر بالكامل دون اقتصاص (PNG, JPG, WEBP)</p>
+                                            <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                        </label>
+                                    )}
                                 </div>
                                 {formErrors.image && <p className="text-xs text-[#C0392B] mt-1">{formErrors.image}</p>}
                             </div>
@@ -1318,7 +1383,7 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
 
             {/* Floating Side Scroll Controller */}
             <div 
-                className="fixed left-5 sm:left-7 bottom-8 z-30 flex flex-col items-center gap-1.5 p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#EAE8E2] transition-all duration-300 hover:shadow-2xl select-none"
+                className="fixed left-5 sm:left-7 bottom-8 z-30 hidden md:flex flex-col items-center gap-1.5 p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#EAE8E2] transition-all duration-300 hover:shadow-2xl select-none"
                 style={{ direction: 'rtl' }}
             >
                 {/* Scroll to Top Button */}

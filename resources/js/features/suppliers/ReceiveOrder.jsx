@@ -1,104 +1,10 @@
+import ProductSearchSelect from '../../shared/components/ProductSearchSelect'
+
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Plus, Trash2, Search, X, ShoppingCart, User, Phone, MapPin, Package, CheckCircle, AlertCircle } from 'lucide-react'
 import AppLayout from '../../shared/layouts/AppLayout'
 import api from '../../shared/services/api'
-
-// ── Searchable Product Select ──────────────────────────────────────────────
-function ProductSearchSelect({ products, value, onChange }) {
-    const [search, setSearch] = useState('')
-    const [isOpen, setIsOpen] = useState(false)
-    const containerRef = useRef(null)
-
-    const selectedProduct = products.find(p => String(p.id) === String(value))
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
-                setIsOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.unit && p.unit.toLowerCase().includes(search.toLowerCase()))
-    )
-
-    const getProductLabel = (p) => {
-        if (!p) return ''
-        return p.unit ? `${p.name} (${p.unit})` : p.name
-    }
-
-    return (
-        <div ref={containerRef} className="relative w-full text-right">
-            <div className="relative">
-                <input
-                    type="text"
-                    value={isOpen ? search : getProductLabel(selectedProduct)}
-                    onChange={(e) => {
-                        setSearch(e.target.value)
-                        if (!isOpen) setIsOpen(true)
-                    }}
-                    onFocus={() => {
-                        setSearch('')
-                        setIsOpen(true)
-                    }}
-                    placeholder={selectedProduct ? getProductLabel(selectedProduct) : "ابحث عن المنتج..."}
-                    className="w-full h-11 px-3 pl-9 rounded-xl border border-[#D6D4CE] bg-white text-sm font-semibold text-[#1A2D23] focus:outline-none focus:border-[#2E5A44] transition-colors"
-                />
-                <Search className="w-4 h-4 text-[#9A978F] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                {value && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            onChange('')
-                            setSearch('')
-                            setIsOpen(true)
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A978F] hover:text-[#C0392B] p-1 rounded"
-                        title="إلغاء التحديد"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                )}
-            </div>
-
-            {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-[#EAE8E2] rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-[#FAF9F6] text-right">
-                    {filteredProducts.length === 0 ? (
-                        <div className="p-3 text-xs text-[#9A978F] text-center">لا يوجد منتج مطابق للبحث</div>
-                    ) : (
-                        filteredProducts.map(p => (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => {
-                                    onChange(p.id)
-                                    setSearch('')
-                                    setIsOpen(false)
-                                }}
-                                className={`w-full text-right px-3 py-2.5 text-xs transition-colors hover:bg-[#EEF4F1] flex items-center justify-between gap-2 ${
-                                    String(value) === String(p.id) ? 'bg-[#EEF4F1] font-bold text-[#2E5A44]' : 'text-[#1A2D23]'
-                                }`}
-                            >
-                                <span className="font-bold truncate">
-                                    {p.name}
-                                    {p.unit && <span className="text-[11px] font-semibold text-[#2E5A44] mr-1.5">({p.unit})</span>}
-                                </span>
-                                <span className="text-[10px] text-[#7C7870] flex-shrink-0 bg-[#FAF9F6] px-2 py-0.5 rounded-md border border-[#EAE8E2]">
-                                    مخزون: <strong className="text-[#2E5A44]">{p.stock}</strong> | تكلفة: <strong>{p.cost_price || p.price || 0}ج</strong>
-                                </span>
-                            </button>
-                        ))
-                    )}
-                </div>
-            )}
-        </div>
-    )
-}
 
 export default function ReceiveOrder({
     suppliers: initialSuppliers = [],
@@ -157,12 +63,22 @@ export default function ReceiveOrder({
     const addItem = () => setItems([...items, { product_id: '', quantity: 1, price: '' }])
     const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx))
 
-    const updateItem = (idx, field, value) => {
+    const updateItem = (idx, field, value, prodObj = null) => {
         const next = [...items]
         next[idx] = { ...next[idx], [field]: value }
-        if (field === 'product_id' && value) {
-            const prod = productsList.find(p => String(p.id) === String(value))
-            if (prod) next[idx].price = prod.cost_price ?? prod.price ?? ''
+        if (field === 'product_id') {
+            if (prodObj) {
+                next[idx].product = prodObj
+                next[idx].price = prodObj.cost_price ?? prodObj.price ?? ''
+            } else if (value) {
+                const prod = productsList.find(p => String(p.id) === String(value))
+                if (prod) {
+                    next[idx].product = prod
+                    next[idx].price = prod.cost_price ?? prod.price ?? ''
+                }
+            } else {
+                next[idx].product = null
+            }
         }
         setItems(next)
     }
@@ -343,7 +259,8 @@ export default function ReceiveOrder({
                                             <ProductSearchSelect
                                                 products={productsList || []}
                                                 value={item.product_id}
-                                                onChange={(val) => updateItem(idx, 'product_id', val)}
+                                                selectedProduct={item.product || (productsList || []).find(p => String(p.id) === String(item.product_id))}
+                                                onChange={(val, prod) => updateItem(idx, 'product_id', val, prod)}
                                             />
                                         </div>
 
