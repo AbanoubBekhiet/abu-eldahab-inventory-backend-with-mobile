@@ -1112,7 +1112,7 @@ class CustomersController extends Controller
     {
         $search = $request->input('search');
 
-        $query = User::whereIn('role', ['customer', 'admin', 'sub_admin'])
+        $query = User::where('role', 'customer')
             ->whereNotNull('password') // registered from app
             ->with(['profile.region']);
 
