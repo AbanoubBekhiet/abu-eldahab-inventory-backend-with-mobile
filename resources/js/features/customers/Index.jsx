@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { router } from '@inertiajs/react'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput, Button, Badge } from '../../shared/components'
-import { Plus, Mail, Phone, MapPin, Store, Tag, X, Edit2, Trash2, UploadCloud, Info, Eye, Download, Printer } from 'lucide-react'
+import { Plus, Mail, Phone, MapPin, Store, Tag, X, Edit2, Trash2, UploadCloud, Info, Eye, Download, Printer, ChevronDown } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function CustomersIndex({ customers: initialCustomers, filters: initialFilters }) {
     const queryClient = useQueryClient()
     const [alert, setAlert] = useState(null)
     const [search, setSearch] = useState(initialFilters?.search || '')
+    const [sourceFilter, setSourceFilter] = useState(initialFilters?.source || 'all')
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [editingCustomer, setEditingCustomer] = useState(null)
     const [viewingCustomer, setViewingCustomer] = useState(null)
@@ -40,28 +41,29 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const loadMoreRef = useRef(null)
 
-    // Reset pagination when search changes
+    // Reset pagination when search or sourceFilter changes
     useEffect(() => {
         setAllCustomers([])
         setHasMore(true)
         setPage(1)
-    }, [search])
+    }, [search, sourceFilter])
 
     const fetchCustomers = useCallback(async (pageNum) => {
         const res = await api.get('/customers', {
             params: {
                 search: search || undefined,
+                source: sourceFilter !== 'all' ? sourceFilter : undefined,
                 page: pageNum,
             }
         })
         return res.data
-    }, [search])
+    }, [search, sourceFilter])
 
     // React Query: Fetch first page
     const { data: customersData, isLoading: isCustomersLoading } = useQuery({
-        queryKey: ['customers', search],
+        queryKey: ['customers', search, sourceFilter],
         queryFn: async () => fetchCustomers(1),
-        placeholderData: (!search) ? {
+        placeholderData: (!search && sourceFilter === 'all') ? {
             customers: initialCustomers,
         } : undefined,
         staleTime: 0,
@@ -295,7 +297,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
     }
 
     return (
-        <AppLayout title="إدارة العملاء" subtitle={`${loadedCustomers.length} عميل مسجل بالنظام`}>
+        <AppLayout title="إدارة العملاء" subtitle={`${loadedCustomers.length} عميل ${sourceFilter === "app" ? "من تطبيق الموبايل" : "مسجل بالنظام"}`}>
             <div className="space-y-5" dir="rtl">
                 {/* Status/Flash Alerts */}
                 {alert && (
@@ -318,14 +320,30 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                 )}
 
                 {/* Toolbar */}
-                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EAE8E2] flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <SearchInput
-                        placeholder="البحث عن العملاء..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full sm:w-80"
-                    />
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EAE8E2] flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <SearchInput
+                            placeholder="البحث عن العملاء..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full sm:w-80"
+                        />
+                        {/* فلتر مصدر العملاء (الكل / التطبيق) */}
+                        <div className="relative w-full sm:w-auto">
+                            <select
+                                value={sourceFilter}
+                                onChange={(e) => setSourceFilter(e.target.value)}
+                                className="w-full sm:w-auto h-11 px-4 pl-9 rounded-xl border border-[#D6D4CE] bg-white text-xs sm:text-sm font-bold text-[#1A2D23] focus:outline-none focus:border-[#2E5A44] transition-colors appearance-none cursor-pointer"
+                            >
+                                <option value="all">👥 كل العملاء</option>
+                                <option value="app">📱 العملاء من التطبيق</option>
+                            </select>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#7C7870]">
+                                <ChevronDown className="w-4 h-4" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto flex-wrap sm:flex-nowrap">
                         <button
                             onClick={() => setIsImportOpen(true)}
                             className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold text-sm border border-[#2E5A44] text-[#2E5A44] transition-all hover:bg-[#EEF4F1] active:scale-95 flex items-center justify-center gap-2"

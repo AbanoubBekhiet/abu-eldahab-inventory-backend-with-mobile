@@ -53,8 +53,13 @@ class CustomersController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $source = $request->input('source', 'all');
         
         $query = User::where('role', 'customer')->with(['profile.region', 'orders']);
+
+        if ($source === 'app') {
+            $query->whereNotNull('password');
+        }
         
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -71,10 +76,7 @@ class CustomersController extends Controller
         $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
         
         $customers = collect($paginator->items())->map(function($user) {
-            // Customers registered from the app have a profile with latitude/longitude or a password (self-registered)
-            $hasPassword   = !empty($user->password);
-            $hasCoords     = $user->profile?->latitude !== null || $user->profile?->longitude !== null;
-            $fromApp       = $hasPassword && $hasCoords;
+            $fromApp       = !empty($user->password);
 
             // Calculate balance
             $aggregates = \App\Models\CustomerTransaction::where('user_id', $user->id)
@@ -107,7 +109,7 @@ class CustomersController extends Controller
                 'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
                 'current_page' => $paginator->currentPage(),
             ],
-            'filters' => ['search' => $search]
+            'filters' => ['search' => $search, 'source' => $source]
         ]);
     }
 
@@ -681,7 +683,12 @@ class CustomersController extends Controller
     public function apiIndex(Request $request)
     {
         $search = $request->input('search');
-        $query = User::where('role', 'customer')->with(['profile', 'orders']);
+        $source = $request->input('source', $request->input('app_status', 'all'));
+        $query = User::where('role', 'customer')->with(['profile.region', 'orders']);
+
+        if ($source === 'app') {
+            $query->whereNotNull('password');
+        }
         
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -697,9 +704,7 @@ class CustomersController extends Controller
         
         $paginator = $query->latest()->orderByDesc('id')->simplePaginate(15);
         $customers = collect($paginator->items())->map(function ($user) {
-            $hasPassword = !empty($user->password);
-            $hasCoords   = $user->profile?->latitude !== null || $user->profile?->longitude !== null;
-            $fromApp     = $hasPassword && $hasCoords;
+            $fromApp     = !empty($user->password);
 
             $aggregates = \App\Models\CustomerTransaction::where('user_id', $user->id)
                 ->selectRaw('
@@ -736,7 +741,7 @@ class CustomersController extends Controller
                 'next_page'    => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
                 'current_page' => $paginator->currentPage(),
             ],
-            'filters' => ['search' => $search]
+            'filters' => ['search' => $search, 'source' => $source]
         ]);
     }
 
@@ -1121,8 +1126,7 @@ class CustomersController extends Controller
                 $q->where('name', 'like', '%' . $search . '%')
                   ->orWhere('email', 'like', '%' . $search . '%')
                   ->orWhereHas('profile', function($pq) use ($search) {
-                      $pq->where('phone_number', 'like', '%' . $search . '%')
-                        ->orWhere('shop_name', 'like', '%' . $search . '%');
+                      $pq->where('phone_number', 'like', '%' . $search . '%');
                   });
             });
         }
