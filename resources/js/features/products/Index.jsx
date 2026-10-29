@@ -559,27 +559,21 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
                             </div>
                         </div>
 
-                        {/* فلتر معروض في التطبيق (دائرة مليانة / فاضية) */}
-                        <button
-                            type="button"
-                            onClick={() => setAppFilter(prev => prev === 'available' ? 'all' : 'available')}
-                            className={`h-11 px-3.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer select-none active:scale-95 ${
-                                appFilter === 'available'
-                                    ? 'bg-[#EEF4F1] border-[#ADCBBB] text-[#2E5A44] shadow-sm'
-                                    : 'bg-white border-[#D6D4CE] text-[#5C5950] hover:bg-[#FAF9F6]'
-                            }`}
-                        >
-                            <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                appFilter === 'available'
-                                    ? 'border-[#2E5A44] bg-[#2E5A44]'
-                                    : 'border-[#9A978F] bg-transparent'
-                            }`}>
-                                {appFilter === 'available' && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                                )}
-                            </span>
-                            <span>معروض في التطبيق</span>
-                        </button>
+                        {/* فلتر تطبيق الموبايل (Select: الترتيب الطبيعي / معروض في التطبيق / مش معروض في التطبيق) */}
+                        <div className="relative">
+                            <select
+                                value={appFilter}
+                                onChange={(e) => setAppFilter(e.target.value)}
+                                className="h-11 px-3.5 pl-8 rounded-xl border border-[#D6D4CE] bg-white text-xs sm:text-sm font-bold text-[#1A2D23] focus:outline-none focus:border-[#2E5A44] transition-colors appearance-none cursor-pointer"
+                            >
+                                <option value="all">تطبيق الموبايل (الكل)</option>
+                                <option value="available">معروض في التطبيق</option>
+                                <option value="unavailable">مش معروض في التطبيق</option>
+                            </select>
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#7C7870]">
+                                <ChevronDown className="w-4 h-4" />
+                            </div>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <button

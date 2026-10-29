@@ -54,7 +54,7 @@ class CustomersController extends Controller
     {
         $search = $request->input('search');
         
-        $query = User::where('role', 'customer')->with(['profile', 'orders']);
+        $query = User::where('role', 'customer')->with(['profile.region', 'orders']);
         
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -708,16 +708,19 @@ class CustomersController extends Controller
                 ')->first();
             $balance = round(floatval($aggregates->total_debts ?? 0) - floatval($aggregates->total_payments ?? 0), 2);
 
+            $cleanEmail = ($user->email && !str_ends_with($user->email, '@pos.local')) ? $user->email : '—';
             return [
                 'id'                  => $user->id,
                 'name'                => $user->name,
-                'email'               => $user->email ?? '—',
+                'email'               => $cleanEmail,
                 'phone'               => $user->profile?->phone_number ?? '—',
                 'address'             => $user->profile?->address ?? '—',
                 'latitude'            => $user->profile?->latitude,
                 'longitude'           => $user->profile?->longitude,
                 'shop_name'           => $user->profile?->shop_name ?? '—',
                 'category_of_place'   => $user->profile?->category_of_place ?? '—',
+                'region_id'           => $user->profile?->region_id,
+                'region'              => $user->profile?->region?->name ?? '—',
                 'orders_count'        => $user->orders->count(),
                 'total_spent'         => number_format($user->orders->sum('total_price'), 2) . ' ج',
                 'status'              => 'active',
@@ -741,19 +744,21 @@ class CustomersController extends Controller
     {
         $request->validate([
             'name'              => 'required|string|max:255',
+            'email'             => 'nullable|email|unique:users,email|max:255',
             'phone'             => 'nullable|string|max:30',
             'phone_number'      => 'nullable|string|max:30',
             'address'           => 'nullable|string|max:255',
             'shop_name'         => 'nullable|string|max:255',
             'category_of_place' => 'nullable|string|max:255',
+            'region_id'         => 'nullable|exists:regions,id',
         ]);
 
         DB::beginTransaction();
         try {
             $user = User::create([
                 'name'     => $request->name,
-                'email'    => 'cust_' . time() . rand(100, 999) . '@pos.local',
-                'password' => bcrypt('password'),
+                'email'    => $request->filled('email') ? $request->email : null,
+                'password' => null,
                 'role'     => 'customer',
             ]);
 
@@ -765,14 +770,14 @@ class CustomersController extends Controller
                 'address'           => $request->address,
                 'shop_name'         => $request->shop_name,
                 'category_of_place' => $request->category_of_place,
-                'region_id'         => $request->region_id,
+                'region_id'         => $request->filled('region_id') ? $request->region_id : null,
             ]);
 
             DB::commit();
             return response()->json(['success' => true, 'message' => 'تم إضافة العميل بنجاح!', 'customer' => $user]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء إضافة العميل.'], 500);
+            return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء إضافة العميل: ' . $e->getMessage()], 500);
         }
     }
 
@@ -782,6 +787,7 @@ class CustomersController extends Controller
 
         $request->validate([
             'name'              => 'required|string|max:255',
+            'email'             => 'nullable|email|unique:users,email,' . $user->id . '|max:255',
             'phone'             => 'nullable|string|max:30',
             'phone_number'      => 'nullable|string|max:30',
             'address'           => 'nullable|string|max:255',
@@ -792,7 +798,11 @@ class CustomersController extends Controller
 
         DB::beginTransaction();
         try {
-            $user->update(['name' => $request->name]);
+            $userData = ['name' => $request->name];
+            if ($request->has('email')) {
+                $userData['email'] = $request->filled('email') ? $request->email : null;
+            }
+            $user->update($userData);
 
             $phone = $request->phone_number ?: $request->phone;
 
@@ -803,7 +813,7 @@ class CustomersController extends Controller
                     'address'           => $request->address,
                     'shop_name'         => $request->shop_name,
                     'category_of_place' => $request->category_of_place,
-                    'region_id'         => $request->region_id,
+                    'region_id'         => $request->filled('region_id') ? $request->region_id : null,
                 ]
             );
 

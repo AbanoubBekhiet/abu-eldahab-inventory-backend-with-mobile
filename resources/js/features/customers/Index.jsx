@@ -20,6 +20,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
 
     const [formData, setFormData] = useState({
         name: '',
+        email: '',
         phone_number: '',
         address: '',
         shop_name: '',
@@ -119,7 +120,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         onSuccess: (data) => {
             setAlert({ type: 'success', message: data.message || 'تم إضافة العميل بنجاح!' })
             setIsAddOpen(false)
-            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
+            setFormData({ name: '', email: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => {
@@ -141,7 +142,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         onSuccess: (data) => {
             setAlert({ type: 'success', message: data.message || 'تم تحديث بيانات العميل بنجاح!' })
             setEditingCustomer(null)
-            setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
+            setFormData({ name: '', email: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => {
@@ -188,7 +189,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
 
     const openAddModal = () => {
         setFormErrors({})
-        setFormData({ name: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
+        setFormData({ name: '', email: '', phone_number: '', address: '', shop_name: '', category_of_place: '', region_id: '' })
         setIsAddOpen(true)
     }
 
@@ -197,6 +198,7 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         setEditingCustomer(cust)
         setFormData({
             name: cust.name,
+            email: (cust.email && cust.email !== '—' && !cust.email.includes('@pos.local')) ? cust.email : '',
             phone_number: cust.phone === '—' ? '' : cust.phone,
             address: cust.address === '—' ? '' : cust.address,
             shop_name: cust.shop_name === '—' ? '' : cust.shop_name,
@@ -521,15 +523,28 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                     </div>
                                 </div>
 
-                                <div className="space-y-1 text-right">
-                                    <label className="text-xs font-bold text-[#7C7870]">رقم الهاتف</label>
-                                    <input
-                                        type="text"
-                                        value={formData.phone_number}
-                                        onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
-                                        className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
-                                    />
-                                    {formErrors.phone_number && <p className="text-xs text-red-500">{formErrors.phone_number}</p>}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-[#7C7870]">رقم الهاتف</label>
+                                        <input
+                                            type="text"
+                                            value={formData.phone_number}
+                                            onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                        />
+                                        {formErrors.phone_number && <p className="text-xs text-red-500">{formErrors.phone_number}</p>}
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-[#7C7870]">البريد الإلكتروني (اختياري)</label>
+                                        <input
+                                            type="email"
+                                            placeholder="example@mail.com"
+                                            value={formData.email || ''}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                        />
+                                        {formErrors.email && <p className="text-xs text-red-500">{formErrors.email}</p>}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -629,15 +644,28 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                     </div>
                                 </div>
 
-                                <div className="space-y-1 text-right">
-                                    <label className="text-xs font-bold text-[#7C7870]">رقم الهاتف</label>
-                                    <input
-                                        type="text"
-                                        value={formData.phone_number}
-                                        onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
-                                        className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
-                                    />
-                                    {formErrors.phone_number && <p className="text-xs text-red-500">{formErrors.phone_number}</p>}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-[#7C7870]">رقم الهاتف</label>
+                                        <input
+                                            type="text"
+                                            value={formData.phone_number}
+                                            onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                        />
+                                        {formErrors.phone_number && <p className="text-xs text-red-500">{formErrors.phone_number}</p>}
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-[#7C7870]">البريد الإلكتروني (اختياري)</label>
+                                        <input
+                                            type="email"
+                                            placeholder="example@mail.com"
+                                            value={formData.email || ''}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44]"
+                                        />
+                                        {formErrors.email && <p className="text-xs text-red-500">{formErrors.email}</p>}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePage } from '@inertiajs/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
@@ -27,17 +27,82 @@ export default function OrdersIndex({
 
     const [loadingDetails, setLoadingDetails] = useState(false)
 
-    // React Query: Fetch Orders
+    // Infinite scroll page state
+    const [page, setPage] = useState(1)
+    const [allOrders, setAllOrders] = useState(() => {
+        if (initialOrders?.data) return initialOrders.data
+        if (Array.isArray(initialOrders)) return initialOrders
+        return []
+    })
+    const [hasMore, setHasMore] = useState(() => !!(initialOrders?.next_page || initialOrders?.next_page_url))
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const loadMoreRef = useRef(null)
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setAllOrders([])
+        setHasMore(true)
+        setPage(1)
+    }, [search])
+
+    const fetchOrders = useCallback(async (pageNum) => {
+        const res = await api.get('/orders', {
+            params: {
+                search: search || undefined,
+                page: pageNum,
+            }
+        })
+        return res.data
+    }, [search])
+
+    // React Query: Fetch first page
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery({
         queryKey: ['orders', search],
-        queryFn: async () => {
-            const res = await api.get('/orders', { params: { search: search || undefined } })
-            return res.data
-        },
-        initialData: initialOrders ? { orders: initialOrders } : undefined,
+        queryFn: async () => fetchOrders(1),
+        placeholderData: (!search && initialOrders) ? { orders: initialOrders } : undefined,
+        staleTime: 0,
     })
 
-    const loadedOrders = ordersData?.orders?.data || ordersData?.data || []
+    // Seed and sync allOrders on first page
+    useEffect(() => {
+        if (!ordersData) return
+        const firstPageData = ordersData.orders?.data || ordersData?.data || []
+        setAllOrders(prev => {
+            if (!prev || prev.length === 0 || page === 1) return firstPageData
+            const firstPageMap = new Map(firstPageData.map(item => [item.raw_id, item]))
+            return prev.map(item => firstPageMap.has(item.raw_id) ? firstPageMap.get(item.raw_id) : item)
+        })
+        setHasMore(!!(ordersData.orders?.next_page || ordersData.orders?.next_page_url))
+    }, [ordersData])
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isOrdersLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchOrders(nextPage).then(res => {
+                        const more = res.orders?.data || res.data || []
+                        setAllOrders(prev => {
+                            const existingIds = new Set(prev.map(o => o.raw_id))
+                            const newItems = more.filter(o => !existingIds.has(o.raw_id))
+                            return [...prev, ...newItems]
+                        })
+                        setHasMore(!!(res.orders?.next_page || res.orders?.next_page_url))
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isOrdersLoading, page, fetchOrders])
+
+    const loadedOrders = allOrders.length > 0 ? allOrders : (ordersData?.orders?.data || ordersData?.data || [])
 
     // Delete Order Mutation
     const deleteMutation = useMutation({
@@ -45,8 +110,9 @@ export default function OrdersIndex({
             const res = await api.delete(`/orders/${orderId}`)
             return res.data
         },
-        onSuccess: (data) => {
+        onSuccess: (data, orderId) => {
             setAlert({ type: 'success', message: data.message || 'تم حذف الطلب بنجاح' })
+            setAllOrders(prev => prev.filter(order => order.raw_id !== orderId))
             queryClient.invalidateQueries({ queryKey: ['orders'] })
         },
         onError: (err) => {
@@ -147,8 +213,19 @@ export default function OrdersIndex({
                             </tr>
                         </thead>
                         <tbody>
-                            {loadedOrders.length === 0 && !isOrdersLoading ? (
-                                <tr><td colSpan="7" className="px-6 py-12 text-center text-sm font-semibold text-[#9A978F]">لا توجد طلبات مطابقة للبحث</td></tr>
+                            {isOrdersLoading && loadedOrders.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="px-6 py-12 text-center text-sm font-semibold text-[#9A978F]">
+                                        <div className="flex justify-center items-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                                            <span>جاري تحميل الطلبات...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : loadedOrders.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="px-6 py-12 text-center text-sm font-semibold text-[#9A978F]">لا توجد طلبات مطابقة للبحث</td>
+                                </tr>
                             ) : (
                                 loadedOrders.map(order => (
                                     <OrderRow
@@ -167,18 +244,41 @@ export default function OrdersIndex({
                 </div>
 
                 <div className="sm:hidden">
-                    {loadedOrders.map(order => (
-                        <OrderRow
-                            key={order.raw_id}
-                            order={order}
-                            onDetails={() => openDetails(order)}
-                            onDiscount={() => setDiscountOrder(order)}
-                            onReturn={() => openReturn(order)}
-                            onPrint={() => printOrder(order)}
-                            onDelete={() => handleDelete(order.raw_id)}
-                        />
-                    ))}
-                    {loadedOrders.length === 0 && !isOrdersLoading && <div className="p-8 text-center text-sm font-semibold text-[#9A978F]">لا توجد طلبات</div>}
+                    {isOrdersLoading && loadedOrders.length === 0 ? (
+                        <div className="p-8 text-center text-sm font-semibold text-[#9A978F]">
+                            <div className="flex justify-center items-center gap-2">
+                                <div className="w-5 h-5 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                                <span>جاري تحميل الطلبات...</span>
+                            </div>
+                        </div>
+                    ) : loadedOrders.length === 0 ? (
+                        <div className="p-8 text-center text-sm font-semibold text-[#9A978F]">لا توجد طلبات</div>
+                    ) : (
+                        loadedOrders.map(order => (
+                            <OrderRow
+                                key={order.raw_id}
+                                order={order}
+                                onDetails={() => openDetails(order)}
+                                onDiscount={() => setDiscountOrder(order)}
+                                onReturn={() => openReturn(order)}
+                                onPrint={() => printOrder(order)}
+                                onDelete={() => handleDelete(order.raw_id)}
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* Infinite Scroll Sentinel */}
+                <div ref={loadMoreRef} className="py-6 flex justify-center">
+                    {(isLoadingMore || (isOrdersLoading && loadedOrders.length > 0)) && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE8E2] shadow-sm">
+                            <div className="w-4 h-4 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-xs font-bold text-[#5C5950]">جاري تحميل المزيد من الطلبات...</span>
+                        </div>
+                    )}
+                    {!hasMore && loadedOrders.length > 0 && (
+                        <span className="text-xs font-bold text-[#9A978F]">تم تحميل جميع الطلبات</span>
+                    )}
                 </div>
 
                 <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid #EAE8E2' }}>
