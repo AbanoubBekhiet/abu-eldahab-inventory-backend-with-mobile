@@ -15,6 +15,9 @@ class WishlistController extends Controller
         $userId = $request->user()->id;
         
         $favoriteIds = Wishlist::where('user_id', $userId)
+            ->whereHas('product', function ($q) {
+                $q->where('is_available_on_app', true);
+            })
             ->pluck('product_id')
             ->toArray();
 
@@ -52,6 +55,9 @@ class WishlistController extends Controller
         }
 
         $favoriteIds = Wishlist::where('user_id', $userId)
+            ->whereHas('product', function ($q) {
+                $q->where('is_available_on_app', true);
+            })
             ->pluck('product_id')
             ->toArray();
 

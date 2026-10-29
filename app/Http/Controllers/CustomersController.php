@@ -1210,8 +1210,11 @@ class CustomersController extends Controller
 
     public function apiAppUserWishlist(Request $request, $id)
     {
-        $paginator = \App\Models\Wishlist::with('product')
-            ->where('user_id', $id)
+        $paginator = \App\Models\Wishlist::where('user_id', $id)
+            ->whereHas('product', function ($q) {
+                $q->where('is_available_on_app', true);
+            })
+            ->with('product')
             ->latest()
             ->orderByDesc('id')
             ->simplePaginate(15);
