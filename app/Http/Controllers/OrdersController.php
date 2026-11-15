@@ -17,9 +17,14 @@ class OrdersController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $source = $request->input('source', 'all');
 
         $query = Order::with(['user.profile', 'products', 'returns'])
             ->latest();
+
+        if ($source && $source !== 'all') {
+            $query->where('source', $source);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -41,6 +46,7 @@ class OrdersController extends Controller
             ],
             'filters' => [
                 'search' => $search,
+                'source' => $source,
             ],
         ]);
     }
@@ -362,6 +368,7 @@ class OrdersController extends Controller
     public function apiIndex(Request $request)
     {
         $search = $request->input('search');
+        $source = $request->input('source', 'all');
 
         $query = Order::with(['user.profile', 'products', 'returns'])
             ->latest();
@@ -372,6 +379,10 @@ class OrdersController extends Controller
 
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
+        }
+
+        if ($source && $source !== 'all') {
+            $query->where('source', $source);
         }
 
         if ($search) {
@@ -393,6 +404,7 @@ class OrdersController extends Controller
             ],
             'filters' => [
                 'search' => $search,
+                'source' => $source,
             ],
         ]);
     }

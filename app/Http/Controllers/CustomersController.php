@@ -1206,6 +1206,177 @@ class CustomersController extends Controller
         return response()->json(['success' => false, 'message' => 'لم يتم العثور على المنتج في السلة'], 404);
     }
 
+    public function apiAppUserCartUpdate(Request $request, $id, $productId)
+    {
+        $request->validate([
+            'quantity' => 'nullable|numeric|min:0',
+            'delta' => 'nullable|numeric',
+        ]);
+
+        $product = \App\Models\Product::find($productId);
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'المنتج غير موجود'], 404);
+        }
+
+        $cart = \App\Models\CustomerCart::where('user_id', $id)->where('product_id', $productId)->first();
+        $currentQty = $cart ? floatval($cart->quantity) : 0;
+
+        if ($request->has('delta')) {
+            $quantity = $currentQty + floatval($request->delta);
+        } elseif ($request->has('quantity')) {
+            $quantity = floatval($request->quantity);
+        } else {
+            $quantity = $currentQty + 1;
+        }
+
+        if ($quantity <= 0) {
+            if ($cart) {
+                $cart->delete();
+            }
+            return response()->json(['success' => true, 'message' => 'تم حذف المنتج من السلة']);
+        }
+
+        if ($product->stock < $quantity) {
+            return response()->json([
+                'success' => false, 
+                'message' => "الكمية المطلوبة ({$quantity}) غير متوفرة في المخزن، المتاح فقط {$product->stock}"
+            ], 422);
+        }
+
+        if (!$cart) {
+            $cart = \App\Models\CustomerCart::create([
+                'user_id' => $id,
+                'product_id' => $productId,
+                'quantity' => $quantity,
+            ]);
+        } else {
+            $cart->update(['quantity' => $quantity]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث السلة بنجاح',
+            'quantity' => $cart->quantity
+        ]);
+    }
+
+    public function apiAppUserCartCheckout(Request $request, $id)
+    {
+        $user = User::with(['profile.region', 'customerCarts.product.activeOffer'])->find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'العميل غير موجود'], 404);
+        }
+
+        $cartItems = $user->customerCarts;
+        if ($cartItems->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'سلة العميل فارغة'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $totalPrice = 0;
+            $totalProfit = 0;
+            $orderProducts = [];
+
+            foreach ($cartItems as $cart) {
+                $product = $cart->product;
+                if (!$product) continue;
+
+                $qty = floatval($cart->quantity);
+                if ($qty <= 0) continue;
+
+                if ($product->stock < $qty) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "الكمية المطلوبة من المنتج '{$product->name}' غير متوفرة بالمخزن، المتاح فقط {$product->stock}"
+                    ], 422);
+                }
+
+                $offer = $product->activeOffer;
+                $unitPrice = $offer ? floatval($offer->offer_price) : floatval($product->price);
+                $itemTotal = $unitPrice * $qty;
+                $costPrice = floatval($product->cost_price ?? 0);
+                $itemProfit = ($unitPrice - $costPrice) * $qty;
+
+                $totalPrice += $itemTotal;
+                $totalProfit += $itemProfit;
+
+                $orderProducts[] = [
+                    'product' => $product,
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $itemTotal,
+                ];
+            }
+
+            if (empty($orderProducts)) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'لا توجد منتجات صالحة في السلة'], 422);
+            }
+
+            $firstProduct = $orderProducts[0]['product'];
+            $previousBalance = \App\Models\CustomerTransaction::where('user_id', $user->id)->sum('amount');
+
+            $order = \App\Models\Order::create([
+                'user_id'          => $user->id,
+                'product_id'       => $firstProduct->id,
+                'total_price'      => $totalPrice,
+                'status'           => 'pending',
+                'profit'           => $totalProfit,
+                'payment_type'     => 'آجل',
+                'paid_amount'      => 0,
+                'notes'            => 'تم إتمام الطلب من إدارة النظام (السلال النشطة)',
+                'source'           => 'app',
+                'previous_balance' => $previousBalance,
+            ]);
+
+            foreach ($orderProducts as $item) {
+                $p = $item['product'];
+                $qty = $item['quantity'];
+
+                DB::table('products_orders')->insert([
+                    'order_id'    => $order->id,
+                    'product_id'  => $p->id,
+                    'quantity'    => $qty,
+                    'price'       => $item['unit_price'],
+                    'total_price' => $item['total_price'],
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+
+                $p->decrement('stock', $qty);
+                if ($p->stock <= 0) {
+                    $p->update(['is_available_on_app' => false]);
+                }
+            }
+
+            // Customer transaction (debt)
+            $orderLabel = '#ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
+            \App\Models\CustomerTransaction::create([
+                'user_id'     => $user->id,
+                'order_id'    => $order->id,
+                'amount'      => $totalPrice,
+                'description' => "طلب من السلة النشطة عبر لوحة الإدارة {$orderLabel} - دين بقيمة " . number_format($totalPrice, 2) . ' ج.م',
+            ]);
+
+            // Clear the customer's cart
+            \App\Models\CustomerCart::where('user_id', $user->id)->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إتمام الطلب بنجاح ونقله إلى صفحة الطلبات برقم ' . $orderLabel,
+                'order_id' => $order->id,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Failed to checkout cart for user {$id}: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء إتمام الطلب: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function apiAppUserCartClear(Request $request, $id)
     {
         \App\Models\CustomerCart::where('user_id', $id)->delete();
@@ -1255,47 +1426,124 @@ class CustomersController extends Controller
         // Get all users who have at least one cart item
         // Group by user, order by the latest cart item updated_at descending
         $query = User::whereHas('customerCarts')
-            ->with(['profile', 'customerCarts' => function($q) {
+            ->with(['profile.region', 'customerCarts' => function($q) {
                 $q->orderBy('updated_at', 'desc');
-            }, 'customerCarts.product'])
-            ->select('users.*')
-            // Using a subquery to order by the latest updated_at of the user's cart items
-            ->orderByDesc(
-                \App\Models\CustomerCart::select('updated_at')
-                    ->whereColumn('user_id', 'users.id')
-                    ->orderByDesc('updated_at')
-                    ->limit(1)
-            );
+            }, 'customerCarts.product.media', 'customerCarts.product.activeOffer'])
+            ->select('users.*');
+
+        if ($regionId = $request->input('region_id')) {
+            if ($regionId !== 'all') {
+                $query->whereHas('profile', function($pq) use ($regionId) {
+                    $pq->where('region_id', $regionId);
+                });
+            }
+        }
+
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhereHas('profile', function($pq) use ($search) {
+                      $pq->where('phone_number', 'like', "%{$search}%")
+                        ->orWhere('shop_name', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%")
+                        ->orWhereHas('region', function($rq) use ($search) {
+                            $rq->where('name', 'like', "%{$search}%");
+                        });
+                  });
+            });
+        }
+
+        $query->orderByDesc(
+            \App\Models\CustomerCart::select('updated_at')
+                ->whereColumn('user_id', 'users.id')
+                ->orderByDesc('updated_at')
+                ->limit(1)
+        );
 
         $paginator = $query->simplePaginate(15);
 
         $activeCarts = collect($paginator->items())->map(function($user) {
             $latestCartItemDate = $user->customerCarts->first()?->updated_at;
+
+            $items = $user->customerCarts->map(function($cart) {
+                $product = $cart->product;
+                if (!$product) return null;
+
+                $offer = $product->activeOffer;
+                $price = $offer ? floatval($offer->offer_price) : floatval($product->price);
+
+                $media = $product->getFirstMedia('products');
+                $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
+
+                $quantity = floatval($cart->quantity);
+                $subtotal = round($price * $quantity, 2);
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $price,
+                    'original_price' => floatval($product->price),
+                    'has_offer' => $offer !== null,
+                    'image_url' => $imageUrl,
+                    'quantity' => $cart->quantity,
+                    'unit' => $product->unit,
+                    'subtotal' => $subtotal,
+                ];
+            })->filter()->values();
+
+            $totalQuantity = $items->sum(function($item) {
+                return floatval($item['quantity']);
+            });
+
+            $totalPrice = round($items->sum(function($item) {
+                return floatval($item['subtotal']);
+            }), 2);
+
+            // Region limits calculation
+            $region = $user->profile?->region;
+            if (!$region && $user->profile?->address) {
+                $addressText = $user->profile->address;
+                $region = \App\Models\Region::all()->first(function($r) use ($addressText) {
+                    return str_contains($addressText, $r->name);
+                });
+            }
+
+            $minOrderTotal = $region ? floatval($region->min_order_total) : 0;
+            $minProductsCount = $region ? intval($region->min_products_count) : 0;
+
+            $remainingTotal = max(0, $minOrderTotal - $totalPrice);
+            $remainingProductsCount = max(0, $minProductsCount - $items->count());
+            $isLimitMet = ($minOrderTotal <= 0 || $totalPrice >= $minOrderTotal) && 
+                          ($minProductsCount <= 0 || $items->count() >= $minProductsCount);
             
             return [
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
+                    'email' => $user->email ?? '—',
                     'phone' => $user->profile?->phone_number ?? '—',
+                    'shop_name' => $user->profile?->shop_name ?? '—',
+                    'address' => $user->profile?->address ?? '—',
+                    'region' => $region?->name ?? '—',
+                    'region_id' => $region?->id ?? $user->profile?->region_id,
+                    'category_of_place' => $user->profile?->category_of_place ?? '—',
+                    'registered_from_app' => !empty($user->password),
+                ],
+                'region_limits' => [
+                    'region_name' => $region?->name ?? 'غير محددة',
+                    'min_order_total' => $minOrderTotal,
+                    'min_products_count' => $minProductsCount,
+                    'remaining_total' => round($remainingTotal, 2),
+                    'remaining_products_count' => $remainingProductsCount,
+                    'is_limit_met' => $isLimitMet,
+                    'has_limits' => ($minOrderTotal > 0 || $minProductsCount > 0),
                 ],
                 'last_added_date' => $latestCartItemDate ? $latestCartItemDate->locale('ar')->translatedFormat('j F Y g:i a') : '—',
-                'items_count' => $user->customerCarts->count(),
-                'items' => $user->customerCarts->map(function($cart) {
-                    $product = $cart->product;
-                    if (!$product) return null;
-
-                    $media = $product->getFirstMedia('products');
-                    $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
-
-                    return [
-                        'id' => $product->id,
-                        'name' => $product->name,
-                        'price' => floatval($product->price),
-                        'image_url' => $imageUrl,
-                        'quantity' => $cart->quantity,
-                        'unit' => $product->unit,
-                    ];
-                })->filter()->values()
+                'items_count' => $items->count(),
+                'total_quantity' => $totalQuantity,
+                'total_price' => $totalPrice,
+                'items' => $items,
             ];
         });
 

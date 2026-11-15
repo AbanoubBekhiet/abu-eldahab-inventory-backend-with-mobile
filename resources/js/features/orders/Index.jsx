@@ -8,7 +8,7 @@ import OrderDetailsModal from './components/OrderDetailsModal'
 import { buildPrintHTML, silentPrint } from './components/OrderDetailsModal'
 import DiscountModal from './components/DiscountModal'
 import ReturnModal from './components/ReturnModal'
-import { X } from 'lucide-react'
+import { X, Smartphone, Monitor } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function OrdersIndex({
@@ -19,6 +19,7 @@ export default function OrdersIndex({
     const queryClient = useQueryClient()
     const [alert, setAlert] = useState(null)
     const [search, setSearch] = useState(initialFilters?.search || '')
+    const [source, setSource] = useState(initialFilters?.source || 'all')
 
     // Modals
     const [detailsOrder, setDetailsOrder] = useState(null)      // full order with products
@@ -38,28 +39,29 @@ export default function OrdersIndex({
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const loadMoreRef = useRef(null)
 
-    // Reset pagination when search changes
+    // Reset pagination when search or source changes
     useEffect(() => {
         setAllOrders([])
         setHasMore(true)
         setPage(1)
-    }, [search])
+    }, [search, source])
 
     const fetchOrders = useCallback(async (pageNum) => {
         const res = await api.get('/orders', {
             params: {
                 search: search || undefined,
+                source: source !== 'all' ? source : undefined,
                 page: pageNum,
             }
         })
         return res.data
-    }, [search])
+    }, [search, source])
 
     // React Query: Fetch first page
     const { data: ordersData, isLoading: isOrdersLoading } = useQuery({
-        queryKey: ['orders', search],
+        queryKey: ['orders', search, source],
         queryFn: async () => fetchOrders(1),
-        placeholderData: (!search && initialOrders) ? { orders: initialOrders } : undefined,
+        placeholderData: (!search && source === 'all' && initialOrders) ? { orders: initialOrders } : undefined,
         staleTime: 0,
     })
 
@@ -196,9 +198,51 @@ export default function OrdersIndex({
                 </div>
             )}
 
-            {/* Toolbar */}
-            <div className="flex mb-6" dir="rtl">
-                <SearchInput placeholder="البحث عن الطلبات..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:w-72" />
+            {/* Toolbar: Search + Source Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-6" dir="rtl">
+                <SearchInput 
+                    placeholder="البحث عن الطلبات (رقم، عميل، صنف)..." 
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)} 
+                    className="w-full sm:w-80" 
+                />
+
+                {/* Source Filter Buttons */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                    <span className="text-[#9A978F] font-bold text-xs flex-shrink-0">مصدر الطلب:</span>
+                    <button
+                        onClick={() => setSource('all')}
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex-shrink-0 ${
+                            source === 'all'
+                                ? 'bg-[#2E5A44] text-white shadow-sm'
+                                : 'bg-white text-[#7C7870] border border-[#EAE8E2] hover:bg-[#FAF9F6]'
+                        }`}
+                    >
+                        كل الطلبات
+                    </button>
+                    <button
+                        onClick={() => setSource('app')}
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                            source === 'app'
+                                ? 'bg-[#4338CA] text-white shadow-sm'
+                                : 'bg-white text-[#7C7870] border border-[#EAE8E2] hover:bg-[#FAF9F6]'
+                        }`}
+                    >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>طلبات التطبيق</span>
+                    </button>
+                    <button
+                        onClick={() => setSource('pos')}
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                            source === 'pos'
+                                ? 'bg-[#2E5A44] text-white shadow-sm'
+                                : 'bg-white text-[#7C7870] border border-[#EAE8E2] hover:bg-[#FAF9F6]'
+                        }`}
+                    >
+                        <Monitor className="w-3.5 h-3.5" />
+                        <span>طلبات السيستم (POS)</span>
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
