@@ -1169,8 +1169,9 @@ class CustomersController extends Controller
             $product = $cart->product;
             if (!$product) return null;
             
-            $offer = $product->activeOffer;
-            $price = $offer ? $offer->offer_price : $product->price;
+            $isOffer = !empty($cart->is_offer);
+            $offer = $isOffer ? $product->activeOffer : null;
+            $price = $offer ? $offer->offer_price : ($cart->unit_price ?? $product->price);
 
             $media = $product->getFirstMedia('products');
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
@@ -1293,8 +1294,9 @@ class CustomersController extends Controller
                     ], 422);
                 }
 
-                $offer = $product->activeOffer;
-                $unitPrice = $offer ? floatval($offer->offer_price) : floatval($product->price);
+                $isOffer = !empty($cart->is_offer);
+                $offer = $isOffer ? $product->activeOffer : null;
+                $unitPrice = $offer ? floatval($offer->offer_price) : floatval($cart->unit_price ?? $product->price);
                 $itemTotal = $unitPrice * $qty;
                 $costPrice = floatval($product->cost_price ?? 0);
                 $itemProfit = ($unitPrice - $costPrice) * $qty;
@@ -1398,8 +1400,9 @@ class CustomersController extends Controller
             $product = $wishlist->product;
             if (!$product) return null;
 
-            $offer = $product->activeOffer;
-            $price = $offer ? $offer->offer_price : $product->price;
+            $isOffer = !empty($cart->is_offer);
+            $offer = $isOffer ? $product->activeOffer : null;
+            $price = $offer ? $offer->offer_price : ($cart->unit_price ?? $product->price);
 
             $media = $product->getFirstMedia('products');
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
@@ -1470,8 +1473,9 @@ class CustomersController extends Controller
                 $product = $cart->product;
                 if (!$product) return null;
 
-                $offer = $product->activeOffer;
-                $price = $offer ? floatval($offer->offer_price) : floatval($product->price);
+                $isOffer = !empty($cart->is_offer);
+                $offer = $isOffer ? $product->activeOffer : null;
+                $price = $offer ? floatval($offer->offer_price) : floatval($cart->unit_price ?? $product->price);
 
                 $media = $product->getFirstMedia('products');
                 $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
@@ -1484,7 +1488,7 @@ class CustomersController extends Controller
                     'name' => $product->name,
                     'price' => $price,
                     'original_price' => floatval($product->price),
-                    'has_offer' => $offer !== null,
+                    'has_offer' => $isOffer && $offer !== null,
                     'image_url' => $imageUrl,
                     'quantity' => $cart->quantity,
                     'unit' => $product->unit,

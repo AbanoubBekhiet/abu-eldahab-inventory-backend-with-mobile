@@ -405,18 +405,18 @@ export default function ActiveCartsIndex() {
 
                 {/* View Cart Details & Management Modal */}
                 {viewingCart && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" dir="rtl">
-                        <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden border border-[#EAE8E2] shadow-2xl flex flex-col max-h-[90vh]">
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in" dir="rtl">
+                        <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden border border-[#EAE8E2] shadow-2xl flex flex-col max-h-[94vh] sm:max-h-[90vh]">
                             {/* Modal Header */}
-                            <div className="px-6 py-4 border-b border-[#FAF9F6] flex items-center justify-between bg-[#FAF9F6]">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#FAF9F6] flex items-center justify-between bg-[#FAF9F6]">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
                                         style={{ background: 'linear-gradient(135deg, #559476, #2E5A44)' }}>
                                         {(viewingCart.user.name || 'ع').charAt(0)}
                                     </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-base text-[#1A2D23]">{viewingCart.user.name}</h3>
+                                    <div className="text-right min-w-0">
+                                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                            <h3 className="font-bold text-sm sm:text-base text-[#1A2D23] truncate">{viewingCart.user.name}</h3>
                                             {viewingCart.user.registered_from_app && (
                                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                                                     style={{ backgroundColor: '#EEF2FF', color: '#4338CA', border: '1px solid #C7D2FE' }}>
@@ -427,14 +427,14 @@ export default function ActiveCartsIndex() {
                                         <p className="text-xs text-[#9A978F]" dir="ltr">{viewingCart.user.phone}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setViewingCart(null)} className="p-1 rounded-lg hover:bg-white transition-colors">
+                                <button onClick={() => setViewingCart(null)} className="p-1.5 rounded-lg hover:bg-white text-[#9A978F] hover:text-[#1A2D23] transition-colors flex-shrink-0">
                                     <X className="w-5 h-5 text-[#9A978F]" />
                                 </button>
                             </div>
 
                             {/* Customer Information Strip inside Modal */}
-                            <div className="px-6 py-3 bg-[#F8FAF9] border-b border-[#EAE8E2] text-xs space-y-1.5">
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[#7C7870]">
+                            <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-[#F8FAF9] border-b border-[#EAE8E2] text-xs space-y-1.5">
+                                <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-[#7C7870]">
                                     {viewingCart.user.shop_name && viewingCart.user.shop_name !== '—' && (
                                         <div className="flex items-center gap-1.5">
                                             <Store className="w-3.5 h-3.5 text-[#2E5A44]" />
@@ -475,7 +475,7 @@ export default function ActiveCartsIndex() {
 
                             {/* Modal Region Limit Banner (Live Progress) */}
                             {viewingCart.region_limits?.has_limits && (
-                                <div className={`px-6 py-2.5 border-b text-xs flex items-center justify-between ${
+                                <div className={`px-4 sm:px-6 py-2 sm:py-2.5 border-b text-xs flex flex-wrap items-center justify-between gap-1.5 ${
                                     modalIsLimitMet 
                                         ? 'bg-[#E8F5E9] border-[#C8E6C9] text-[#2E5A44]' 
                                         : 'bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]'
@@ -494,7 +494,7 @@ export default function ActiveCartsIndex() {
                                         )}
                                     </div>
                                     {viewingCart.region_limits.min_products_count > 0 && (
-                                        <span className="text-[11px] opacity-85">
+                                        <span className="text-[11px] opacity-85 mr-auto">
                                             (الأصناف: {modalItemsCount} من {viewingCart.region_limits.min_products_count})
                                         </span>
                                     )}
@@ -502,7 +502,7 @@ export default function ActiveCartsIndex() {
                             )}
 
                             {/* Modal Body: Products List with Increment / Decrement */}
-                            <div className="p-6 overflow-y-auto text-right space-y-4 flex-1">
+                            <div className="p-3.5 sm:p-6 overflow-y-auto text-right space-y-4 flex-1">
                                 {/* Add Product Search Section */}
                                 <div className="bg-[#FAF9F6] p-3 rounded-xl border border-[#EAE8E2] space-y-2">
                                     <div className="flex items-center justify-between">
@@ -610,101 +610,128 @@ export default function ActiveCartsIndex() {
                                     </button>
                                 </h4>
                                 
-                                <div className="space-y-3">
+                                <div className="space-y-2.5 sm:space-y-3">
                                     {modalItems.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 p-3 border border-[#EAE8E2] rounded-xl bg-white hover:border-[#D5E3DB] transition-colors">
-                                            {item.image_url ? (
-                                                <img src={item.image_url} alt={item.name} className="w-14 h-14 object-cover rounded-lg border border-[#EAE8E2] flex-shrink-0" />
-                                            ) : (
-                                                <div className="w-14 h-14 bg-[#FAF9F6] rounded-lg border border-[#EAE8E2] flex items-center justify-center flex-shrink-0">
-                                                    <ImageIcon className="w-6 h-6 text-[#D5D2C4]" />
+                                        <div key={idx} className="p-2.5 sm:p-3 border border-[#EAE8E2] rounded-xl bg-white hover:border-[#D5E3DB] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                                            {/* Product Info (Image + Title + Unit Price) */}
+                                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                                {item.image_url ? (
+                                                    <img src={item.image_url} alt={item.name} className="w-11 h-11 sm:w-14 sm:h-14 object-cover rounded-lg border border-[#EAE8E2] flex-shrink-0" />
+                                                ) : (
+                                                    <div className="w-11 h-11 sm:w-14 sm:h-14 bg-[#FAF9F6] rounded-lg border border-[#EAE8E2] flex items-center justify-center flex-shrink-0">
+                                                        <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#D5D2C4]" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0 text-right">
+                                                    <h4 className="font-bold text-xs sm:text-sm text-[#1A2D23] line-clamp-2 sm:truncate leading-snug">{item.name}</h4>
+                                                    <div className="flex items-center gap-2 mt-0.5 sm:mt-1 flex-wrap">
+                                                        <span className="text-[11px] sm:text-xs text-[#7C7870] font-medium">
+                                                            السعر: <strong className="text-[#2E5A44]">{formatCurrency(item.price)} ج.م</strong> / {item.unit || 'وحدة'}
+                                                        </span>
+                                                        <span className="hidden sm:inline-block text-[#D5D2C4]">•</span>
+                                                        <span className="hidden sm:inline-block text-xs font-bold text-[#1A2D23]">
+                                                            الإجمالي: {formatCurrency((item.price || 0) * (item.quantity || 0))} ج.م
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-sm text-[#1A2D23] truncate">{item.name}</h4>
-                                                <div className="flex items-center justify-between mt-1">
-                                                    <span className="text-xs text-[#7C7870] font-medium">
-                                                        السعر: {formatCurrency(item.price)} ج.م / {item.unit || 'وحدة'}
-                                                    </span>
-                                                    <span className="text-sm font-bold text-[#1A2D23]">
+                                            </div>
+
+                                            {/* Actions Row: Stepper + Total (mobile) + Delete Button */}
+                                            <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F5F4F0] flex-shrink-0">
+                                                {/* Mobile Total Price */}
+                                                <div className="sm:hidden text-right">
+                                                    <span className="text-[10px] text-[#9A978F] block leading-none font-medium">الإجمالي</span>
+                                                    <span className="text-xs font-black text-[#2E5A44]">
                                                         {formatCurrency((item.price || 0) * (item.quantity || 0))} ج.م
                                                     </span>
                                                 </div>
-                                            </div>
 
-                                            {/* Quantity Increase / Decrease Controls for Admin / Sub-admin */}
-                                            <div className="flex items-center gap-1.5 bg-[#FAF9F6] border border-[#EAE8E2] rounded-xl p-1 flex-shrink-0">
-                                                <button
-                                                    onClick={() => updateQuantityMutation.mutate({ 
-                                                        userId: viewingCart.user.id, 
-                                                        productId: item.id, 
-                                                        quantity: Number(item.quantity) + 1 
-                                                    })}
-                                                    disabled={updateQuantityMutation.isPending}
-                                                    className="w-7 h-7 rounded-lg bg-white hover:bg-[#EEF4F1] text-[#2E5A44] flex items-center justify-center font-bold text-xs border border-[#EAE8E2] transition-colors shadow-2xs"
-                                                    title="زيادة الكمية"
-                                                >
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                </button>
-                                                <span className="px-2 font-bold text-xs text-[#1A2D23] min-w-[28px] text-center">
-                                                    {item.quantity}
-                                                </span>
-                                                <button
-                                                    onClick={() => {
-                                                        const newQty = Number(item.quantity) - 1
-                                                        if (newQty <= 0) {
-                                                            if (window.confirm('هل تريد حذف هذا المنتج من السلة؟')) {
-                                                                removeCartItemMutation.mutate({ userId: viewingCart.user.id, productId: item.id })
-                                                            }
-                                                        } else {
-                                                            updateQuantityMutation.mutate({ 
+                                                <div className="flex items-center gap-2 mr-auto sm:mr-0">
+                                                    {/* Quantity Increase / Decrease Controls */}
+                                                    <div className="flex items-center gap-1 bg-[#FAF9F6] border border-[#EAE8E2] rounded-xl p-1">
+                                                        <button
+                                                            onClick={() => updateQuantityMutation.mutate({ 
                                                                 userId: viewingCart.user.id, 
                                                                 productId: item.id, 
-                                                                quantity: newQty 
-                                                            })
-                                                        }
-                                                    }}
-                                                    disabled={updateQuantityMutation.isPending}
-                                                    className="w-7 h-7 rounded-lg bg-white hover:bg-red-50 text-red-600 flex items-center justify-center font-bold text-xs border border-[#EAE8E2] transition-colors shadow-2xs"
-                                                    title="إنقاص الكمية"
-                                                >
-                                                    <Minus className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
+                                                                quantity: Number(item.quantity) + 1 
+                                                            })}
+                                                            disabled={updateQuantityMutation.isPending}
+                                                            className="w-7 h-7 rounded-lg bg-white hover:bg-[#EEF4F1] text-[#2E5A44] flex items-center justify-center font-bold text-xs border border-[#EAE8E2] transition-colors shadow-2xs"
+                                                            title="زيادة الكمية"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <span className="px-2 font-bold text-xs text-[#1A2D23] min-w-[28px] text-center">
+                                                            {item.quantity}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => {
+                                                                const newQty = Number(item.quantity) - 1
+                                                                if (newQty <= 0) {
+                                                                    if (window.confirm('هل تريد حذف هذا المنتج من السلة؟')) {
+                                                                        removeCartItemMutation.mutate({ userId: viewingCart.user.id, productId: item.id })
+                                                                    }
+                                                                } else {
+                                                                    updateQuantityMutation.mutate({ 
+                                                                        userId: viewingCart.user.id, 
+                                                                        productId: item.id, 
+                                                                        quantity: newQty 
+                                                                    })
+                                                                }
+                                                            }}
+                                                            disabled={updateQuantityMutation.isPending}
+                                                            className="w-7 h-7 rounded-lg bg-white hover:bg-red-50 text-red-600 flex items-center justify-center font-bold text-xs border border-[#EAE8E2] transition-colors shadow-2xs"
+                                                            title="إنقاص الكمية"
+                                                        >
+                                                            <Minus className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
 
-                                            {/* Delete Item Button */}
-                                            <button 
-                                                onClick={() => removeCartItemMutation.mutate({ userId: viewingCart.user.id, productId: item.id })}
-                                                disabled={removeCartItemMutation.isPending}
-                                                className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors flex-shrink-0"
-                                                title="حذف المنتج من السلة"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                                    {/* Delete Item Button */}
+                                                    <button 
+                                                        onClick={() => removeCartItemMutation.mutate({ userId: viewingCart.user.id, productId: item.id })}
+                                                        disabled={removeCartItemMutation.isPending}
+                                                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors flex-shrink-0"
+                                                        title="حذف المنتج من السلة"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             {/* Modal Footer at the End (توتال العناصر بالسلة، توتال حسابهم، وزر إتمام الطلب) */}
-                            <div className="p-4 sm:p-5 bg-[#FAF9F6] border-t border-[#EAE8E2]">
-                                <div className="bg-white p-4 rounded-xl border border-[#D5E3DB] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                                    {/* Total Items & Quantity */}
-                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-                                        <div className="w-10 h-10 rounded-xl bg-[#EEF4F1] flex items-center justify-center text-[#2E5A44] flex-shrink-0">
-                                            <Package className="w-5 h-5" />
+                            <div className="p-3 sm:p-5 bg-[#FAF9F6] border-t border-[#EAE8E2]">
+                                <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#D5E3DB] shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                                    {/* Total Items & Quantity (Mobile split with Total Price) */}
+                                    <div className="flex items-center justify-between sm:justify-start gap-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#EEF4F1] flex items-center justify-center text-[#2E5A44] flex-shrink-0">
+                                                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[11px] sm:text-xs text-[#9A978F] block font-medium">توتال العناصر بالسلة:</span>
+                                                <span className="text-xs sm:text-sm font-bold text-[#1A2D23]">
+                                                    {modalItemsCount} أصناف <span className="text-[#2E5A44]">({modalTotalQuantity} قطعة)</span>
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="text-xs text-[#9A978F] block font-medium">توتال العناصر بالسلة:</span>
-                                            <span className="text-sm font-bold text-[#1A2D23]">
-                                                {modalItemsCount} أصناف <span className="text-[#2E5A44]">({modalTotalQuantity} قطعة)</span>
+
+                                        {/* Mobile Total Amount */}
+                                        <div className="sm:hidden text-left">
+                                            <span className="text-[11px] text-[#9A978F] block font-medium">توتال الحساب:</span>
+                                            <span className="text-base font-black text-[#2E5A44]">
+                                                {formatCurrency(modalTotalPrice)} ج.م
                                             </span>
                                         </div>
                                     </div>
 
-                                    {/* Total Amount & Order Checkout Action */}
-                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-[#EAE8E2]">
-                                        <div className="text-right sm:text-left">
+                                    {/* Desktop Total Amount & Checkout Button */}
+                                    <div className="flex items-center gap-3 sm:justify-end border-t sm:border-t-0 pt-2.5 sm:pt-0 border-[#EAE8E2]">
+                                        <div className="hidden sm:block text-left">
                                             <span className="text-xs text-[#9A978F] block font-medium">توتال الحساب (الإجمالي):</span>
                                             <span className="text-lg font-black text-[#2E5A44]">
                                                 {formatCurrency(modalTotalPrice)} ج.م
@@ -717,7 +744,7 @@ export default function ActiveCartsIndex() {
                                                 }
                                             }}
                                             disabled={checkoutCartMutation.isPending || modalItemsCount === 0}
-                                            className="px-5 py-2.5 rounded-xl bg-[#2E5A44] text-white hover:bg-[#1A2D23] transition-colors text-sm font-bold shadow-sm flex items-center gap-2 disabled:opacity-50 flex-shrink-0"
+                                            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2E5A44] text-white hover:bg-[#1A2D23] transition-colors text-sm font-bold shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 flex-shrink-0"
                                         >
                                             <Check className="w-4 h-4" />
                                             {checkoutCartMutation.isPending ? 'جاري الإتمام...' : 'إتمام وتأكيد الطلب'}

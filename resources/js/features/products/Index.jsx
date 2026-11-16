@@ -4,7 +4,7 @@ import AppLayout from '../../shared/layouts/AppLayout'
 import { Button, SearchInput } from '../../shared/components'
 import ProductCard from './components/ProductCard'
 import CategoryFilter from './components/CategoryFilter'
-import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag, Printer, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, LayoutGrid, List, Edit2, Trash2, X, Image as ImageIcon, UploadCloud, Info, Download, Tag, Printer, ChevronUp, ChevronDown, Check } from 'lucide-react'
 import api, { getLogoUrl } from '../../shared/services/api'
 
 export default function ProductsIndex({ products: initialProducts, total_count: initialTotalCount, categories: initialCategories, filters: initialFilters }) {
@@ -152,7 +152,37 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const [formErrors, setFormErrors] = useState({})
 
     const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-    const [exportSelectedCategories, setExportSelectedCategories] = useState([])
+    const [exportSelectedCategories, setExportSelectedCategories] = useState(['all'])
+    const [exportStockStatus, setExportStockStatus] = useState('all')
+    const [exportAppStatus, setExportAppStatus] = useState('all')
+    const [exportColumns, setExportColumns] = useState({
+        id: true,
+        name: true,
+        category: true,
+        cost_price: true,
+        price: true,
+        stock: true,
+        unit: false,
+        stock_status: true,
+        app_status: true,
+    })
+
+    const toggleExportColumn = (colKey) => {
+        setExportColumns(prev => ({
+            ...prev,
+            [colKey]: !prev[colKey]
+        }))
+    }
+
+    const selectAllColumns = (val = true) => {
+        setExportColumns(prev => {
+            const next = {}
+            Object.keys(prev).forEach(k => {
+                next[k] = val
+            })
+            return next
+        })
+    }
 
     // Infinite scroll page state
     const [page, setPage] = useState(1)
@@ -437,7 +467,10 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const handleExportExcel = async () => {
         try {
             const res = await api.post('/products/export', {
-                category_ids: exportSelectedCategories
+                category_ids: exportSelectedCategories,
+                stock_status: exportStockStatus,
+                app_status: exportAppStatus,
+                columns: exportColumns,
             }, { responseType: 'blob' })
             
             const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -456,7 +489,10 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
     const handlePrintPDF = async () => {
         try {
             const res = await api.post('/products/print', {
-                category_ids: exportSelectedCategories
+                category_ids: exportSelectedCategories,
+                stock_status: exportStockStatus,
+                app_status: exportAppStatus,
+                columns: exportColumns,
             })
             
             const printWindow = window.open('', '_blank')
@@ -729,53 +765,222 @@ export default function ProductsIndex({ products: initialProducts, total_count: 
             {/* EXPORT MODAL */}
             {isExportModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#FAF9F6]/70 backdrop-blur-md overflow-y-auto animate-fade-in">
-                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-md p-6 sm:p-8 shadow-2xl relative">
-                        <button
-                            onClick={() => setIsExportModalOpen(false)}
-                            className="absolute left-6 top-6 p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        <h3 className="text-lg font-bold text-[#1A2D23] mb-6 text-right">تصدير وطباعة المنتجات</h3>
-                        <p className="text-sm font-semibold text-[#5C5950] text-right mb-4">اختر التصنيفات المراد تصدير منتجاتها:</p>
-
-                        <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2" dir="rtl">
-                            <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
-                                    checked={exportSelectedCategories.includes('all')}
-                                    onChange={() => toggleExportCategory('all')}
-                                />
-                                <span className="text-sm font-semibold">كل المنتجات</span>
-                            </label>
-
-                            {categories.map(c => (
-                                <label key={c.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-[#FAF9F6] transition-colors">
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2]"
-                                        checked={exportSelectedCategories.includes(c.id)}
-                                        onChange={() => toggleExportCategory(c.id)}
-                                    />
-                                    <span className="text-sm font-semibold">{c.name}</span>
-                                </label>
-                            ))}
+                    <div className="bg-white rounded-3xl border border-[#EAE8E2] w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-4 border-b border-[#EAE8E2]">
+                            <button
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="p-2 rounded-xl hover:bg-[#FAF9F6] text-[#9A978F] hover:text-[#1A2D23] transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div className="text-right">
+                                <h3 className="text-lg font-bold text-[#1A2D23]">تصدير وطباعة المنتجات</h3>
+                                <p className="text-xs text-[#9A978F] mt-0.5">خصص الفلاتر والأعمدة المطلوبة للتقرير بصيغة Excel أو PDF</p>
+                            </div>
                         </div>
 
-                        <div className="flex gap-3 mt-8">
+                        {/* Modal Body with smooth scrolling */}
+                        <div className="flex-1 overflow-y-auto py-5 space-y-5 text-right pr-1" dir="rtl">
+                            {/* Section 1: Categories */}
+                            <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#EAE8E2]">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-bold text-[#1A2D23]">التصنيفات</label>
+                                    <span className="text-xs text-[#9A978F]">
+                                        {exportSelectedCategories.includes('all') ? 'تم اختيار جميع التصنيفات' : `${exportSelectedCategories.length} تصنيف محدد`}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleExportCategory('all')}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                            exportSelectedCategories.includes('all')
+                                                ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                : 'bg-white border border-[#EAE8E2] text-[#5C5950] hover:bg-[#F3F1EC]'
+                                        }`}
+                                    >
+                                        {exportSelectedCategories.includes('all') && <Check className="w-3.5 h-3.5" />}
+                                        كل التصنيفات
+                                    </button>
+                                    {categories.map(c => {
+                                        const isChecked = exportSelectedCategories.includes(c.id);
+                                        return (
+                                            <button
+                                                key={c.id}
+                                                type="button"
+                                                onClick={() => toggleExportCategory(c.id)}
+                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                    isChecked
+                                                        ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                        : 'bg-white border border-[#EAE8E2] text-[#5C5950] hover:bg-[#F3F1EC]'
+                                                }`}
+                                            >
+                                                {isChecked && <Check className="w-3.5 h-3.5" />}
+                                                {c.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Section 2: Filters Grid (Stock Status & App Availability) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Stock Status Filter */}
+                                <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#EAE8E2]">
+                                    <label className="block text-sm font-bold text-[#1A2D23] mb-2.5">حالة المخزون</label>
+                                    <div className="grid grid-cols-3 gap-1.5 bg-white p-1 rounded-xl border border-[#EAE8E2]">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportStockStatus('all')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportStockStatus === 'all'
+                                                    ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            الكل
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportStockStatus('in_stock')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportStockStatus === 'in_stock'
+                                                    ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            متوفر فقط
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportStockStatus('out_of_stock')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportStockStatus === 'out_of_stock'
+                                                    ? 'bg-[#BA1A1A] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            نفذت الكمية
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* App Availability Filter */}
+                                <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#EAE8E2]">
+                                    <label className="block text-sm font-bold text-[#1A2D23] mb-2.5">الظهور في التطبيق</label>
+                                    <div className="grid grid-cols-3 gap-1.5 bg-white p-1 rounded-xl border border-[#EAE8E2]">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportAppStatus('all')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportAppStatus === 'all'
+                                                    ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            الكل
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportAppStatus('available')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportAppStatus === 'available'
+                                                    ? 'bg-[#2E5A44] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            معروض
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExportAppStatus('unavailable')}
+                                            className={`py-1.5 px-1 text-xs font-bold rounded-lg transition-all text-center ${
+                                                exportAppStatus === 'unavailable'
+                                                    ? 'bg-[#5C5950] text-white shadow-sm'
+                                                    : 'text-[#5C5950] hover:bg-[#FAF9F6]'
+                                            }`}
+                                        >
+                                            غير معروض
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Visible Columns / Fields */}
+                            <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#EAE8E2]">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-bold text-[#1A2D23]">الحقول والأعمدة المطلوب إظهارها في التقرير</label>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => selectAllColumns(true)}
+                                            className="text-[11px] font-bold text-[#2E5A44] hover:underline"
+                                        >
+                                            تحديد الكل
+                                        </button>
+                                        <span className="text-[#EAE8E2]">|</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => selectAllColumns(false)}
+                                            className="text-[11px] font-bold text-[#BA1A1A] hover:underline"
+                                        >
+                                            إلغاء التحديد
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                    {[
+                                        { key: 'id', label: 'كود المنتج' },
+                                        { key: 'name', label: 'اسم المنتج' },
+                                        { key: 'category', label: 'التصنيف' },
+                                        { key: 'cost_price', label: 'سعر التكلفة' },
+                                        { key: 'price', label: 'سعر البيع' },
+                                        { key: 'stock', label: 'الكمية المتوفرة (المخزون)' },
+                                        { key: 'unit', label: 'الوحدة' },
+                                        { key: 'stock_status', label: 'حالة المخزون (متوفر / نفذ)' },
+                                        { key: 'app_status', label: 'الظهور بالتطبيق' },
+                                    ].map(col => {
+                                        const isChecked = Boolean(exportColumns[col.key]);
+                                        return (
+                                            <label
+                                                key={col.key}
+                                                className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                                    isChecked
+                                                        ? 'bg-white border-[#2E5A44]/40 shadow-xs text-[#1A2D23]'
+                                                        : 'bg-white/60 border-[#EAE8E2] text-[#9A978F] hover:bg-white'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() => toggleExportColumn(col.key)}
+                                                    className="w-4 h-4 rounded text-[#2E5A44] border-[#EAE8E2] focus:ring-[#2E5A44]"
+                                                />
+                                                <span className="text-xs font-semibold">{col.label}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer with Actions */}
+                        <div className="pt-4 border-t border-[#EAE8E2] flex gap-3">
                             <button
                                 onClick={handleExportExcel}
-                                className="flex-1 py-3.5 rounded-xl font-bold text-sm text-[#2E5A44] bg-[#EBF5EF] hover:bg-[#D7EBE1] transition-all"
+                                className="flex-1 py-3 px-4 rounded-xl font-bold text-sm text-[#2E5A44] bg-[#EBF5EF] hover:bg-[#D7EBE1] active:scale-[0.99] transition-all flex items-center justify-center gap-2 border border-[#D7EBE1]"
                             >
+                                <Download className="w-4 h-4" />
                                 تحميل كـ Excel
                             </button>
                             <button
                                 onClick={handlePrintPDF}
-                                className="flex-1 py-3.5 rounded-xl font-bold text-sm text-white bg-[#2E5A44] hover:bg-[#234735] transition-all"
+                                className="flex-1 py-3 px-4 rounded-xl font-bold text-sm text-white bg-[#2E5A44] hover:bg-[#234735] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-sm"
                             >
-                                طباعة / PDF
+                                <Printer className="w-4 h-4" />
+                                طباعة / حفظ كـ PDF
                             </button>
                         </div>
                     </div>

@@ -16,25 +16,46 @@ class CustomerCartController extends Controller
     {
         $userId = $request->user()->id;
 
-        $cartItems = CustomerCart::with(['product.media', 'product.category'])
+        $cartItems = CustomerCart::with(['product.media', 'product.category', 'product.activeOffer'])
             ->where('user_id', $userId)
             ->get();
 
-        $formattedCart = $cartItems->map(function ($cartItem) {
+        $hasOfferCol = \Illuminate\Support\Facades\Schema::hasColumn('customer_carts', 'is_offer');
+        $hasPriceCol = \Illuminate\Support\Facades\Schema::hasColumn('customer_carts', 'unit_price');
+
+        $formattedCart = $cartItems->map(function ($cartItem) use ($hasOfferCol, $hasPriceCol) {
             $product = $cartItem->product;
             
             $media = $product ? $product->getFirstMedia('products') : null;
             $imageUrl = $media ? route('app-storage.show', ['id' => $media->id, 'filename' => $media->file_name]) : null;
 
+            $isOffer = false;
+            $itemPrice = $product ? floatval($product->price) : 0;
+            $maxLimit = $product ? $product->max_app_order_quantity : null;
+
+            if ($hasOfferCol && !empty($cartItem->is_offer)) {
+                $offer = $product ? $product->activeOffer : null;
+                if ($offer) {
+                    $isOffer = true;
+                    $itemPrice = $hasPriceCol && $cartItem->unit_price !== null 
+                        ? floatval($cartItem->unit_price) 
+                        : floatval($offer->offer_price);
+                    $maxLimit = $offer->offer_max_quantity ?? ($product ? $product->max_app_order_quantity : null);
+                }
+            } elseif ($hasPriceCol && $cartItem->unit_price !== null) {
+                $itemPrice = floatval($cartItem->unit_price);
+            }
+
             return [
-                'id' => $cartItem->id, // Cart item ID (or product ID, but front uses ID for list keys sometimes)
-                'product_id' => $cartItem->product_id,
-                'name' => $product ? $product->name : '—',
-                'price' => $product ? floatval($product->price) : 0,
-                'quantity' => floatval($cartItem->quantity),
-                'image_url' => $imageUrl,
-                'category_name' => $product && $product->category ? $product->category->name : 'بدون قسم',
-                'max_app_order_quantity' => $product ? $product->max_app_order_quantity : null,
+                'id'                     => $cartItem->id,
+                'product_id'             => $cartItem->product_id,
+                'name'                   => $product ? $product->name : '—',
+                'price'                  => $itemPrice,
+                'is_offer'               => $isOffer,
+                'quantity'               => floatval($cartItem->quantity),
+                'image_url'              => $imageUrl,
+                'category_name'          => $product && $product->category ? $product->category->name : 'بدون قسم',
+                'max_app_order_quantity' => $maxLimit,
             ];
         });
 
@@ -51,16 +72,19 @@ class CustomerCartController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1'
+            'quantity'   => 'required|integer|min:1',
+            'is_offer'   => 'nullable|boolean',
+            'unit_price' => 'nullable|numeric|min:0',
         ]);
 
         $userId = $request->user()->id;
         $productId = $request->product_id;
         $qtyToAdd = $request->quantity;
+        $isOffer = $request->boolean('is_offer');
 
         $errorResponse = null;
 
-        DB::transaction(function() use ($userId, $productId, $qtyToAdd, &$errorResponse) {
+        DB::transaction(function() use ($userId, $productId, $qtyToAdd, $isOffer, &$errorResponse) {
             $product = Product::where('id', $productId)->lockForUpdate()->firstOrFail();
 
             $cartItem = CustomerCart::firstOrNew([
@@ -79,6 +103,20 @@ class CustomerCartController extends Controller
             }
 
             $cartItem->quantity = $newQuantity;
+
+            // Determine if item was added as an offer
+            $activeOffer = $product->activeOffer;
+            $hasActiveOffer = $isOffer && $activeOffer !== null;
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('customer_carts', 'is_offer')) {
+                // If it's explicitly an offer, set true; if explicitly from search/regular, set false
+                $cartItem->is_offer = $hasActiveOffer;
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('customer_carts', 'unit_price')) {
+                $cartItem->unit_price = $hasActiveOffer ? floatval($activeOffer->offer_price) : floatval($product->price);
+            }
+
             $cartItem->save();
         });
 

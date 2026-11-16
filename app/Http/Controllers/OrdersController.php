@@ -627,6 +627,13 @@ class OrdersController extends Controller
                     }
 
                     $unitPrice = isset($item['unit_price']) ? floatval($item['unit_price']) : floatval($product->price);
+                    if ($unitPrice < floatval($product->price)) {
+                        if ($activeOffer && abs($unitPrice - floatval($activeOffer->offer_price)) < 0.01) {
+                            // Valid active offer price
+                        } else {
+                            $unitPrice = floatval($product->price);
+                        }
+                    }
                     $totalPrice += $unitPrice * $qty;
                     $totalProfit += ($unitPrice - floatval($product->cost_price)) * $qty;
                     $totalItemsCount += $qty;
@@ -676,6 +683,13 @@ class OrdersController extends Controller
                     $product = Product::findOrFail($item['product_id']);
                     $qty = floatval($item['quantity']);
                     $unitPrice = isset($item['unit_price']) ? floatval($item['unit_price']) : floatval($product->price);
+                    if ($unitPrice < floatval($product->price)) {
+                        if ($activeOffer && abs($unitPrice - floatval($activeOffer->offer_price)) < 0.01) {
+                            // Valid active offer price
+                        } else {
+                            $unitPrice = floatval($product->price);
+                        }
+                    }
 
                     DB::table('products_orders')->insert([
                         'order_id'    => $order->id,

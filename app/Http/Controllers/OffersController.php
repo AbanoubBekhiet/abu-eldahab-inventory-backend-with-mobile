@@ -78,27 +78,30 @@ class OffersController extends Controller
             ->where('is_active', true)
             ->update(['is_active' => false]);
 
-        // Save original values
-        $originalPrice = $product->price;
+        // Save original values. If a previous offer had mutated the base price, recover true original price
+        $originalPrice = floatval($product->price);
+        $lastOffer = Offer::where('product_id', $product->id)->latest()->first();
+        if ($lastOffer && $lastOffer->original_price > 0 && abs(floatval($product->price) - floatval($lastOffer->offer_price)) < 0.01) {
+            $originalPrice = floatval($lastOffer->original_price);
+            // Restore true base price in products table if previously mutated
+            $product->update(['price' => $originalPrice]);
+        }
         $originalMaxQty = $product->max_app_order_quantity;
 
-        // Create the offer
+        // Create the offer (WITHOUT mutating the base price of the product)
         $offer = Offer::create([
-            'product_id'          => $product->id,
-            'offer_price'         => $request->offer_price,
-            'original_price'      => $originalPrice,
-            'offer_max_quantity'   => $request->offer_max_quantity,
+            'product_id'            => $product->id,
+            'offer_price'           => $request->offer_price,
+            'original_price'        => $originalPrice,
+            'offer_max_quantity'    => $request->offer_max_quantity,
             'original_max_quantity' => $originalMaxQty,
-            'expires_at'          => $request->expires_at,
-            'is_active'           => true,
-            'created_by'          => $request->user()->id,
+            'expires_at'            => $request->expires_at,
+            'is_active'             => true,
+            'created_by'            => $request->user()->id,
         ]);
 
-        // Update product price and limit
-        $product->update([
-            'price' => $request->offer_price,
-            'max_app_order_quantity' => $request->offer_max_quantity ?? $product->max_app_order_quantity,
-        ]);
+        // Note: The product's base price in 'products' table remains untouched!
+        // The offer price is applied specifically when ordered through the offer.
 
         // Send FCM notification to all customers
         $this->notifyCustomersAboutOffer($product, $offer);
@@ -119,7 +122,7 @@ class OffersController extends Controller
     {
         $request->validate([
             'offer_price'        => 'sometimes|numeric|min:0',
-            'offer_max_quantity'  => 'nullable|integer|min:1',
+            'offer_max_quantity' => 'nullable|integer|min:1',
             'expires_at'         => 'sometimes|date|after:now',
         ]);
 
@@ -129,11 +132,10 @@ class OffersController extends Controller
         $updateData = [];
         if ($request->has('offer_price')) {
             $updateData['offer_price'] = $request->offer_price;
-            $product->update(['price' => $request->offer_price]);
+            // Never mutate the product base price!
         }
         if ($request->has('offer_max_quantity')) {
             $updateData['offer_max_quantity'] = $request->offer_max_quantity;
-            $product->update(['max_app_order_quantity' => $request->offer_max_quantity]);
         }
         if ($request->has('expires_at')) {
             $updateData['expires_at'] = $request->expires_at;
@@ -157,10 +159,14 @@ class OffersController extends Controller
         $offer = Offer::findOrFail($id);
         $product = $offer->product;
 
-        // Restore original price and max quantity
-        if ($offer->is_active && !$offer->isExpired()) {
+        // If product price was previously mutated by legacy bug, heal it back to original price
+        if ($product && $offer->original_price > 0 && abs(floatval($product->price) - floatval($offer->offer_price)) < 0.01) {
             $product->update([
                 'price' => $offer->original_price,
+            ]);
+        }
+        if ($product && $offer->original_max_quantity !== null && $product->max_app_order_quantity == $offer->offer_max_quantity) {
+            $product->update([
                 'max_app_order_quantity' => $offer->original_max_quantity,
             ]);
         }

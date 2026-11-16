@@ -13,6 +13,13 @@ class CustomerCart extends Model
         'user_id',
         'product_id',
         'quantity',
+        'is_offer',
+        'unit_price',
+    ];
+
+    protected $casts = [
+        'is_offer'   => 'boolean',
+        'unit_price' => 'decimal:2',
     ];
 
     public function user()

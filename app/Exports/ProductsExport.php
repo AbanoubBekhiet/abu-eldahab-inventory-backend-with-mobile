@@ -12,12 +12,14 @@ class ProductsExport implements FromView, ShouldAutoSize
     protected $categoryIds;
     protected $stockFilter;
     protected $appFilter;
+    protected $columns;
 
-    public function __construct($categoryIds = [], $stockFilter = null, $appFilter = null)
+    public function __construct($categoryIds = [], $stockFilter = null, $appFilter = null, $columns = [])
     {
         $this->categoryIds = $categoryIds;
         $this->stockFilter = $stockFilter;
         $this->appFilter = $appFilter;
+        $this->columns = $columns;
     }
 
     public function view(): View
@@ -25,7 +27,10 @@ class ProductsExport implements FromView, ShouldAutoSize
         $query = Product::with('category')->orderBy('id', 'asc');
         
         if (!empty($this->categoryIds) && $this->categoryIds[0] !== 'all') {
-            $query->whereIn('category_id', $this->categoryIds);
+            $validCategoryIds = array_filter($this->categoryIds, fn($id) => $id !== 'all' && is_numeric($id));
+            if (!empty($validCategoryIds)) {
+                $query->whereIn('category_id', $validCategoryIds);
+            }
         }
 
         if ($this->stockFilter === 'out_of_stock') {
@@ -34,16 +39,17 @@ class ProductsExport implements FromView, ShouldAutoSize
             $query->where('stock', '>', 0);
         }
 
-        if ($this->appFilter === 'hidden') {
+        if ($this->appFilter === 'hidden' || $this->appFilter === 'unavailable') {
             $query->where(function($q) {
                 $q->where('is_available_on_app', false)->orWhereNull('is_available_on_app');
             });
-        } elseif ($this->appFilter === 'visible') {
+        } elseif ($this->appFilter === 'visible' || $this->appFilter === 'available') {
             $query->where('is_available_on_app', true);
         }
 
         return view('print.products-excel', [
-            'products' => $query->get()
+            'products' => $query->get(),
+            'columns'  => $this->columns,
         ]);
     }
 }

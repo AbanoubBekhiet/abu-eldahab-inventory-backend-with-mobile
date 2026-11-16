@@ -12,23 +12,88 @@ use App\Exports\ProductsExport;
 
 class ProductsController extends Controller
 {
+    private function parseExportColumns($rawColumns): array
+    {
+        $defaultColumns = [
+            'id'           => true,
+            'name'         => true,
+            'category'     => true,
+            'cost_price'   => true,
+            'price'        => true,
+            'stock'        => true,
+            'unit'         => false,
+            'stock_status' => true,
+            'app_status'   => true,
+        ];
+
+        if (empty($rawColumns)) {
+            return $defaultColumns;
+        }
+
+        if (is_array($rawColumns)) {
+            if (array_is_list($rawColumns)) {
+                $columns = [];
+                foreach ($defaultColumns as $key => $val) {
+                    $columns[$key] = in_array($key, $rawColumns);
+                }
+                return $columns;
+            } else {
+                return array_merge($defaultColumns, array_map('boolval', $rawColumns));
+            }
+        }
+
+        return $defaultColumns;
+    }
+
     public function exportExcel(Request $request)
     {
         $categoryIds = $request->input('category_ids', []);
-        return Excel::download(new ProductsExport($categoryIds), 'products-report.xlsx');
+        $stockStatus = $request->input('stock_status', 'all');
+        $appStatus = $request->input('app_status', 'all');
+        $columns = $this->parseExportColumns($request->input('columns'));
+
+        return Excel::download(
+            new ProductsExport($categoryIds, $stockStatus, $appStatus, $columns),
+            'products-report.xlsx'
+        );
     }
 
     public function printView(Request $request)
     {
         $categoryIds = $request->input('category_ids', []);
+        $stockStatus = $request->input('stock_status', 'all');
+        $appStatus = $request->input('app_status', 'all');
+        $columns = $this->parseExportColumns($request->input('columns'));
+
         $query = Product::with('category')->orderBy('id', 'asc');
         
         if (!empty($categoryIds) && $categoryIds[0] !== 'all') {
-            $query->whereIn('category_id', $categoryIds);
+            $validIds = array_filter($categoryIds, fn($id) => $id !== 'all' && is_numeric($id));
+            if (!empty($validIds)) {
+                $query->whereIn('category_id', $validIds);
+            }
+        }
+
+        if ($stockStatus === 'out_of_stock') {
+            $query->where('stock', '<=', 0);
+        } elseif ($stockStatus === 'in_stock') {
+            $query->where('stock', '>', 0);
+        }
+
+        if ($appStatus === 'available') {
+            $query->where('is_available_on_app', 1);
+        } elseif ($appStatus === 'unavailable') {
+            $query->where(function($q) {
+                $q->where('is_available_on_app', 0)->orWhereNull('is_available_on_app');
+            });
         }
 
         $products = $query->get();
-        return view('print.products', compact('products'));
+        $groupedProducts = $products->groupBy(function($product) {
+            return $product->category ? $product->category->name : 'بدون تصنيف';
+        });
+
+        return view('print.products', compact('products', 'groupedProducts', 'columns', 'stockStatus', 'appStatus'));
     }
 
     public function index(Request $request){
