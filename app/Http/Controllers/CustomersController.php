@@ -1464,7 +1464,12 @@ class CustomersController extends Controller
                 ->limit(1)
         );
 
-        $paginator = $query->simplePaginate(15);
+        $perPage = intval($request->input('per_page', 15));
+        if ($perPage <= 0 || $perPage > 100) {
+            $perPage = 15;
+        }
+
+        $paginator = $query->simplePaginate($perPage);
 
         $activeCarts = collect($paginator->items())->map(function($user) {
             $latestCartItemDate = $user->customerCarts->first()?->updated_at;
@@ -1556,6 +1561,7 @@ class CustomersController extends Controller
                 'data' => $activeCarts,
                 'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
                 'current_page' => $paginator->currentPage(),
+                'has_more' => $paginator->hasMorePages(),
             ]
         ]);
     }

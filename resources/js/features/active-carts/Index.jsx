@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
 import { SearchInput } from '../../shared/components'
@@ -40,19 +40,76 @@ export default function ActiveCartsIndex() {
     })
     const regions = regionsData || []
 
-    // React Query: Fetch Active Carts
+    // Infinite scroll page state
+    const [page, setPage] = useState(1)
+    const [allCarts, setAllCarts] = useState([])
+    const [hasMore, setHasMore] = useState(false)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const loadMoreRef = useRef(null)
+
+    // Reset pagination when search or selectedRegion changes
+    useEffect(() => {
+        setAllCarts([])
+        setHasMore(true)
+        setPage(1)
+    }, [search, selectedRegion])
+
+    const fetchActiveCarts = useCallback(async (pageNum) => {
+        const res = await api.get('/active-carts', { 
+            params: { 
+                search: search || undefined,
+                region_id: selectedRegion !== 'all' ? selectedRegion : undefined,
+                page: pageNum,
+            } 
+        })
+        return res.data
+    }, [search, selectedRegion])
+
+    // React Query: Fetch first page
     const { data: cartsData, isLoading } = useQuery({
         queryKey: ['active_carts', search, selectedRegion],
-        queryFn: async () => {
-            const res = await api.get('/active-carts', { 
-                params: { 
-                    search: search || undefined,
-                    region_id: selectedRegion !== 'all' ? selectedRegion : undefined
-                } 
-            })
-            return res.data
-        },
+        queryFn: async () => fetchActiveCarts(1),
+        staleTime: 0,
     })
+
+    // Seed and sync allCarts on first page
+    useEffect(() => {
+        if (!cartsData) return
+        const firstPageData = cartsData.active_carts?.data || []
+        setAllCarts(prev => {
+            if (!prev || prev.length === 0 || page === 1) return firstPageData
+            const firstPageMap = new Map(firstPageData.map(c => [c.user.id, c]))
+            return prev.map(c => firstPageMap.has(c.user.id) ? firstPageMap.get(c.user.id) : c)
+        })
+        setHasMore(!!(cartsData.active_carts?.next_page))
+    }, [cartsData])
+
+    // Infinite scroll observer
+    useEffect(() => {
+        if (!loadMoreRef.current) return
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
+                    const nextPage = page + 1
+                    setIsLoadingMore(true)
+                    fetchActiveCarts(nextPage).then(res => {
+                        const more = res.active_carts?.data || []
+                        setAllCarts(prev => {
+                            const existingIds = new Set(prev.map(c => c.user.id))
+                            const newItems = more.filter(c => !existingIds.has(c.user.id))
+                            return [...prev, ...newItems]
+                        })
+                        setHasMore(!!(res.active_carts?.next_page))
+                        setPage(nextPage)
+                        setIsLoadingMore(false)
+                    }).catch(() => setIsLoadingMore(false))
+                }
+            },
+            { threshold: 0.1 }
+        )
+        observer.observe(loadMoreRef.current)
+        return () => observer.disconnect()
+    }, [hasMore, isLoadingMore, isLoading, page, fetchActiveCarts])
 
     // React Query: Search products to add to cart
     const { data: searchProductsData, isLoading: isSearchingProducts } = useQuery({
@@ -155,8 +212,9 @@ export default function ActiveCartsIndex() {
             const res = await api.delete(`/app-users/${userId}/cart`)
             return res.data
         },
-        onSuccess: () => {
+        onSuccess: (_, userId) => {
             queryClient.invalidateQueries(['active_carts'])
+            setAllCarts(prev => prev.filter(c => c.user.id !== userId))
             setViewingCart(null)
         },
         onError: () => alert('حدث خطأ أثناء تفريغ السلة')
@@ -168,9 +226,10 @@ export default function ActiveCartsIndex() {
             const res = await api.post(`/app-users/${userId}/cart/checkout`)
             return res.data
         },
-        onSuccess: (data) => {
+        onSuccess: (data, userId) => {
             queryClient.invalidateQueries(['active_carts'])
             queryClient.invalidateQueries(['orders'])
+            setAllCarts(prev => prev.filter(c => c.user.id !== userId))
             setViewingCart(null)
             alert(data.message || 'تم إتمام الطلب بنجاح ونقله إلى صفحة الطلبات!')
         },
@@ -179,7 +238,7 @@ export default function ActiveCartsIndex() {
         }
     })
 
-    const activeCarts = cartsData?.active_carts?.data || []
+    const activeCarts = allCarts.length > 0 ? allCarts : (cartsData?.active_carts?.data || [])
 
     const formatCurrency = (val) => {
         const num = Number(val) || 0
@@ -402,6 +461,19 @@ export default function ActiveCartsIndex() {
                         })}
                     </div>
                 )}
+
+                {/* Infinite Scroll Sentinel */}
+                <div ref={loadMoreRef} className="py-6 flex justify-center">
+                    {(isLoadingMore || (isLoading && activeCarts.length > 0)) && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#EAE8E2] shadow-sm">
+                            <div className="w-4 h-4 border-2 border-[#2E5A44] border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-xs font-bold text-[#5C5950]">جاري تحميل المزيد من السلال...</span>
+                        </div>
+                    )}
+                    {!hasMore && activeCarts.length > 0 && (
+                        <span className="text-xs font-bold text-[#9A978F]">تم عرض جميع السلال النشطة ({activeCarts.length})</span>
+                    )}
+                </div>
 
                 {/* View Cart Details & Management Modal */}
                 {viewingCart && (
