@@ -19,9 +19,19 @@ import {
     Minus,
     CheckCircle2,
     AlertCircle,
-    Check
+    Check,
+    MessageCircle
 } from 'lucide-react'
 import api from '../../shared/services/api'
+
+const formatWhatsApp = (phone) => {
+    if (!phone || phone === '—') return ''
+    let clean = phone.replace(/[^0-9+]/g, '')
+    if (clean.startsWith('+')) clean = clean.substring(1)
+    else if (clean.startsWith('00')) clean = clean.substring(2)
+    if (clean.startsWith('01') && clean.length === 11) clean = '2' + clean
+    return clean
+}
 
 export default function ActiveCartsIndex() {
     const [search, setSearch] = useState('')
@@ -36,10 +46,13 @@ export default function ActiveCartsIndex() {
         queryKey: ['regions'],
         queryFn: async () => {
             const res = await api.get('/regions')
-            return res.data?.data || []
+            const list = res.data?.data || res.data || []
+            return Array.isArray(list) ? list : []
         },
     })
-    const regions = regionsData || []
+    const regions = Array.isArray(regionsData)
+        ? regionsData
+        : (Array.isArray(regionsData?.data) ? regionsData.data : [])
 
     // Infinite scroll page state
     const [page, setPage] = useState(1)
@@ -432,9 +445,27 @@ export default function ActiveCartsIndex() {
                                                         )}
                                                     </div>
                                                     {cartEntry.user.phone && cartEntry.user.phone !== '—' && (
-                                                        <p className="text-xs text-[#7C7870] font-medium mt-0.5" dir="ltr">
-                                                            {cartEntry.user.phone}
-                                                        </p>
+                                                        <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                                                            <a
+                                                                href={`tel:${cartEntry.user.phone.replace(/[^0-9+]/g, '')}`}
+                                                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1E3E2B] bg-[#EEF4F1] hover:bg-[#DCEAE3] px-2 py-0.5 rounded-md border border-[#D0E2D8] transition-colors"
+                                                                dir="ltr"
+                                                                title="اتصال هاتف"
+                                                            >
+                                                                <Phone className="w-2.5 h-2.5 text-[#2E5A44]" />
+                                                                <span>{cartEntry.user.phone}</span>
+                                                            </a>
+                                                            <a
+                                                                href={`https://wa.me/${formatWhatsApp(cartEntry.user.phone)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#15803D] bg-[#E8F8EE] hover:bg-[#D4F3DE] px-2 py-0.5 rounded-md border border-[#C6F0D3] transition-colors"
+                                                                title="محادثة واتساب"
+                                                            >
+                                                                <MessageCircle className="w-2.5 h-2.5 text-[#25D366]" />
+                                                                <span>واتس</span>
+                                                            </a>
+                                                        </div>
                                                     )}
                                                     <p className="text-[11px] text-[#B8B5AE] mt-0.5">
                                                         آخر إضافة: {cartEntry.last_added_date}
@@ -588,9 +619,26 @@ export default function ActiveCartsIndex() {
                                         </div>
                                     )}
                                     {viewingCart.user.phone && viewingCart.user.phone !== '—' && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Phone className="w-3.5 h-3.5 text-[#9A978F]" />
-                                            <span className="font-medium text-[#1A2D23]" dir="ltr">{viewingCart.user.phone}</span>
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={`tel:${viewingCart.user.phone.replace(/[^0-9+]/g, '')}`}
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF4F1] hover:bg-[#DCEAE3] border border-[#D0E2D8] rounded-lg text-xs font-bold text-[#1E3E2B] transition-colors"
+                                                dir="ltr"
+                                                title="اتصال هاتف"
+                                            >
+                                                <Phone className="w-3.5 h-3.5 text-[#2E5A44]" />
+                                                <span>{viewingCart.user.phone}</span>
+                                            </a>
+                                            <a
+                                                href={`https://wa.me/${formatWhatsApp(viewingCart.user.phone)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E8F8EE] hover:bg-[#D4F3DE] border border-[#C6F0D3] rounded-lg text-xs font-bold text-[#15803D] transition-colors"
+                                                title="محادثة واتساب"
+                                            >
+                                                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                                                <span>محادثة واتساب</span>
+                                            </a>
                                         </div>
                                     )}
                                 </div>

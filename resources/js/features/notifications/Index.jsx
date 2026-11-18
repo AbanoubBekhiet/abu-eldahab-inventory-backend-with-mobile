@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../shared/layouts/AppLayout'
-import { Bell, Send, Users, User, X, CheckCircle2, AlertTriangle, Search, Loader2 } from 'lucide-react'
+import { Bell, Send, Users, User, X, CheckCircle2, AlertTriangle, Search, Loader2, Trash2 } from 'lucide-react'
 import api from '../../shared/services/api'
 
 export default function NotificationsIndex() {
@@ -70,6 +70,28 @@ export default function NotificationsIndex() {
             showAlert('error', msg)
         },
     })
+
+    // Delete Notification Mutation
+    const deleteMutation = useMutation({
+        mutationFn: async (id) => {
+            const res = await api.delete(`/notifications/${id}`)
+            return res.data
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries(['admin-notifications'])
+            showAlert('success', data.message || 'تم حذف الإشعار بنجاح!')
+        },
+        onError: (err) => {
+            const msg = err.response?.data?.message || 'فشل حذف الإشعار'
+            showAlert('error', msg)
+        },
+    })
+
+    const handleDelete = (notification) => {
+        if (window.confirm(`هل أنت متأكد من حذف الإشعار "${notification.title}"؟`)) {
+            deleteMutation.mutate(notification.id)
+        }
+    }
 
     const handleCloseModal = () => {
         setIsSendOpen(false)
@@ -198,6 +220,7 @@ export default function NotificationsIndex() {
                                         <th className="py-3.5 px-4 font-semibold">المستلم</th>
                                         <th className="py-3.5 px-4 font-semibold">المرسل</th>
                                         <th className="py-3.5 px-4 font-semibold">تاريخ الإرسال</th>
+                                        <th className="py-3.5 px-4 font-semibold text-center">إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#E2E0DA]">
@@ -227,6 +250,17 @@ export default function NotificationsIndex() {
                                             </td>
                                             <td className="py-3.5 px-4 text-[#7C7870] whitespace-nowrap">
                                                 {formatDate(n.created_at)}
+                                            </td>
+                                            <td className="py-3.5 px-4 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(n)}
+                                                    disabled={deleteMutation.isPending}
+                                                    title="حذف الإشعار"
+                                                    className="p-2 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors inline-flex items-center justify-center disabled:opacity-50"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

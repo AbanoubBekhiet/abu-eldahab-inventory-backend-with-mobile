@@ -94,6 +94,8 @@ class CustomersController extends Controller
                 'address'              => $user->profile?->address ?? '—',
                 'shop_name'            => $user->profile?->shop_name ?? '—',
                 'category_of_place'    => $user->profile?->category_of_place ?? '—',
+                'region_id'            => $user->profile?->region_id,
+                'region'               => $user->profile?->region?->name ?? '—',
                 'orders_count'         => $user->orders->count(),
                 'total_spent'          => number_format($user->orders->sum('total_price'), 2) . ' ج',
                 'status'               => 'active',
@@ -754,6 +756,10 @@ class CustomersController extends Controller
 
     public function apiStore(Request $request)
     {
+        if ($request->has('region_id') && empty($request->region_id)) {
+            $request->merge(['region_id' => null]);
+        }
+
         $request->validate([
             'name'              => 'required|string|max:255',
             'email'             => 'nullable|email|unique:users,email|max:255',
@@ -796,6 +802,10 @@ class CustomersController extends Controller
     public function apiUpdate(Request $request, $id)
     {
         $user = User::where('role', 'customer')->findOrFail($id);
+
+        if ($request->has('region_id') && empty($request->region_id)) {
+            $request->merge(['region_id' => null]);
+        }
 
         $request->validate([
             'name'              => 'required|string|max:255',

@@ -22,11 +22,14 @@ export default function RegionsIndex() {
         queryKey: ['regions'],
         queryFn: async () => {
             const res = await api.get('/regions')
-            return res.data
+            const list = res.data?.data || res.data || []
+            return Array.isArray(list) ? list : []
         },
     })
 
-    const regions = regionsData?.data || []
+    const regions = Array.isArray(regionsData)
+        ? regionsData
+        : (Array.isArray(regionsData?.data) ? regionsData.data : [])
 
     const showAlert = (type, msg) => {
         setAlert({ type, msg })

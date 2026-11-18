@@ -104,14 +104,17 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
     const loadedCustomers = allCustomers
 
     // React Query: Fetch Regions
-    const { data: regionsData } = useQuery({
+    const { data: regionsData, isLoading: isRegionsLoading } = useQuery({
         queryKey: ['regions'],
         queryFn: async () => {
             const res = await api.get('/regions')
-            return res.data
+            const list = res.data?.data || res.data || []
+            return Array.isArray(list) ? list : []
         },
     })
-    const regions = regionsData?.data || []
+    const regions = Array.isArray(regionsData)
+        ? regionsData
+        : (Array.isArray(regionsData?.data) ? regionsData.data : [])
 
     // Add Customer Mutation
     const addMutation = useMutation({
@@ -199,13 +202,13 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
         setFormErrors({})
         setEditingCustomer(cust)
         setFormData({
-            name: cust.name,
+            name: cust.name || '',
             email: (cust.email && cust.email !== '—' && !cust.email.includes('@pos.local')) ? cust.email : '',
-            phone_number: cust.phone === '—' ? '' : cust.phone,
-            address: cust.address === '—' ? '' : cust.address,
-            shop_name: cust.shop_name === '—' ? '' : cust.shop_name,
-            category_of_place: cust.category_of_place === '—' ? '' : cust.category_of_place,
-            region_id: cust.region_id || '',
+            phone_number: (cust.phone === '—' || !cust.phone) ? '' : cust.phone,
+            address: (cust.address === '—' || !cust.address) ? '' : cust.address,
+            shop_name: (cust.shop_name === '—' || !cust.shop_name) ? '' : cust.shop_name,
+            category_of_place: (cust.category_of_place === '—' || !cust.category_of_place) ? '' : cust.category_of_place,
+            region_id: cust.region_id ? String(cust.region_id) : '',
         })
     }
 
@@ -432,8 +435,15 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                         )}
                                         {customer.address && customer.address !== '—' && (
                                             <div className="flex items-center gap-2">
-                                                <MapPin className="w-3.5 h-3.5" />
+                                                <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                                                 <span className="truncate">{customer.address}</span>
+                                            </div>
+                                        )}
+                                        {((customer.region && customer.region !== '—') || customer.region_id) && (
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <span className="px-2 py-0.5 rounded-md bg-[#EEF4F1] text-[#2E5A44] font-semibold border border-[#ADCBBB]/40">
+                                                    📍 {customer.region && customer.region !== '—' ? customer.region : (regions.find(r => String(r.id) === String(customer.region_id))?.name || 'منطقة')}
+                                                </span>
                                             </div>
                                         )}
                                     </div>
@@ -579,14 +589,18 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                     <div className="space-y-1 text-right">
                                         <label className="text-xs font-bold text-[#7C7870]">المنطقة</label>
                                         <select
-                                            value={formData.region_id}
+                                            value={formData.region_id ? String(formData.region_id) : ''}
                                             onChange={e => setFormData({ ...formData, region_id: e.target.value })}
-                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white"
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white cursor-pointer"
                                         >
                                             <option value="">-- بدون منطقة --</option>
-                                            {regions.map(r => (
-                                                <option key={r.id} value={r.id}>{r.name}</option>
-                                            ))}
+                                            {isRegionsLoading && regions.length === 0 ? (
+                                                <option disabled value="">جاري تحميل المناطق...</option>
+                                            ) : (
+                                                regions.map(r => (
+                                                    <option key={r.id} value={String(r.id)}>{r.name}</option>
+                                                ))
+                                            )}
                                         </select>
                                         {formErrors.region_id && <p className="text-xs text-red-500">{formErrors.region_id}</p>}
                                     </div>
@@ -700,14 +714,18 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                     <div className="space-y-1 text-right">
                                         <label className="text-xs font-bold text-[#7C7870]">المنطقة</label>
                                         <select
-                                            value={formData.region_id}
+                                            value={formData.region_id ? String(formData.region_id) : ''}
                                             onChange={e => setFormData({ ...formData, region_id: e.target.value })}
-                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white"
+                                            className="w-full px-3 py-2 border border-[#EAE8E2] rounded-xl text-sm focus:outline-none focus:border-[#2E5A44] bg-white cursor-pointer"
                                         >
                                             <option value="">-- بدون منطقة --</option>
-                                            {regions.map(r => (
-                                                <option key={r.id} value={r.id}>{r.name}</option>
-                                            ))}
+                                            {isRegionsLoading && regions.length === 0 ? (
+                                                <option disabled value="">جاري تحميل المناطق...</option>
+                                            ) : (
+                                                regions.map(r => (
+                                                    <option key={r.id} value={String(r.id)}>{r.name}</option>
+                                                ))
+                                            )}
                                         </select>
                                         {formErrors.region_id && <p className="text-xs text-red-500">{formErrors.region_id}</p>}
                                     </div>
@@ -873,11 +891,28 @@ export default function CustomersIndex({ customers: initialCustomers, filters: i
                                             <span className="text-xs text-[#9A978F]">البريد الإلكتروني:</span>
                                         </div>
                                     )}
-                                    {viewingCustomer.region_id && (
+                                    {((viewingCustomer.region && viewingCustomer.region !== '—') || viewingCustomer.region_id) && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[#1A2D23]">
-                                                {regions.find(r => r.id == viewingCustomer.region_id)?.name || viewingCustomer.region_id}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[#1A2D23] font-medium">
+                                                    {viewingCustomer.region && viewingCustomer.region !== '—'
+                                                        ? viewingCustomer.region
+                                                        : (regions.find(r => String(r.id) === String(viewingCustomer.region_id))?.name || 'بدون منطقة')}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const c = viewingCustomer;
+                                                        setViewingCustomer(null);
+                                                        openEditModal(c);
+                                                    }}
+                                                    className="text-xs text-[#2E5A44] hover:underline flex items-center gap-1 font-semibold bg-[#EEF4F1] px-2 py-0.5 rounded-lg transition-colors hover:bg-[#ADCBBB]"
+                                                    title="تعديل المنطقة"
+                                                >
+                                                    <Edit2 className="w-3 h-3" />
+                                                    تغيير
+                                                </button>
+                                            </div>
                                             <span className="text-xs text-[#9A978F]">المنطقة:</span>
                                         </div>
                                     )}

@@ -306,4 +306,25 @@ class NotificationsController extends Controller
 
         return response()->json(['users' => $users]);
     }
+
+    /**
+     * Admin: Delete sent notification.
+     * DELETE /api/notifications/{id}
+     */
+    public function apiDestroy($id)
+    {
+        $notification = Notification::find($id);
+        if (!$notification) {
+            return response()->json(['success' => false, 'message' => 'الإشعار غير موجود'], 404);
+        }
+
+        // Delete associated read records
+        NotificationRead::where('notification_id', $id)->delete();
+        $notification->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حذف الإشعار بنجاح',
+        ]);
+    }
 }

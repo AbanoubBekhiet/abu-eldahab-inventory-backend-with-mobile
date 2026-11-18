@@ -180,5 +180,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notifications', [NotificationsController::class, 'apiStore']);
         Route::get('/notifications/sent', [NotificationsController::class, 'apiSentIndex']);
         Route::get('/notifications/search-users', [NotificationsController::class, 'apiSearchUsers']);
+        Route::delete('/notifications/{id}', [NotificationsController::class, 'apiDestroy']);
     });
 });
