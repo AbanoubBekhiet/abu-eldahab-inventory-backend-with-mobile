@@ -691,13 +691,20 @@ class CustomersController extends Controller
         }
         
         if ($search) {
-            $query->where(function ($q) use ($search) {
+            $searchNorm = preg_replace('/[أإآا]/u', '_', $search);
+            $searchNorm = preg_replace('/[ةه]/u', '_', $searchNorm);
+            $searchNorm = preg_replace('/[يى]/u', '_', $searchNorm);
+
+            $query->where(function ($q) use ($search, $searchNorm) {
                 $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('name', 'like', '%' . $searchNorm . '%')
                   ->orWhere('email', 'like', '%' . $search . '%')
-                  ->orWhereHas('profile', function ($pq) use ($search) {
+                  ->orWhereHas('profile', function ($pq) use ($search, $searchNorm) {
                       $pq->where('phone_number', 'like', '%' . $search . '%')
                         ->orWhere('shop_name', 'like', '%' . $search . '%')
-                        ->orWhere('address', 'like', '%' . $search . '%');
+                        ->orWhere('shop_name', 'like', '%' . $searchNorm . '%')
+                        ->orWhere('address', 'like', '%' . $search . '%')
+                        ->orWhere('address', 'like', '%' . $searchNorm . '%');
                   });
             });
         }
@@ -1464,14 +1471,11 @@ class CustomersController extends Controller
                 ->limit(1)
         );
 
-        $perPage = intval($request->input('per_page', 15));
-        if ($perPage <= 0 || $perPage > 100) {
-            $perPage = 15;
-        }
+        $readyStatus = $request->input('ready_status', 'all');
 
-        $paginator = $query->simplePaginate($perPage);
+        $allUsers = $query->get();
 
-        $activeCarts = collect($paginator->items())->map(function($user) {
+        $activeCarts = $allUsers->map(function($user) {
             $latestCartItemDate = $user->customerCarts->first()?->updated_at;
 
             $items = $user->customerCarts->map(function($cart) {
@@ -1554,15 +1558,46 @@ class CustomersController extends Controller
                 'total_price' => $totalPrice,
                 'items' => $items,
             ];
-        });
+        })->filter(fn($c) => $c['items_count'] > 0)->values();
+
+        $totalAll = $activeCarts->count();
+        $totalReady = $activeCarts->filter(fn($c) => !empty($c['region_limits']['is_limit_met']))->count();
+        $totalNotReady = $totalAll - $totalReady;
+
+        if ($readyStatus === 'ready') {
+            $filteredCarts = $activeCarts->filter(fn($c) => !empty($c['region_limits']['is_limit_met']))->values();
+        } elseif ($readyStatus === 'not_ready') {
+            $filteredCarts = $activeCarts->filter(fn($c) => empty($c['region_limits']['is_limit_met']))->values();
+        } else {
+            $filteredCarts = $activeCarts;
+        }
+
+        $perPage = intval($request->input('per_page', 15));
+        if ($perPage <= 0 || $perPage > 100) {
+            $perPage = 15;
+        }
+
+        $page = intval($request->input('page', 1));
+        if ($page < 1) $page = 1;
+
+        $itemsForPage = $filteredCarts->slice(($page - 1) * $perPage, $perPage)->values();
+        $hasNextPage = ($page * $perPage) < $filteredCarts->count();
+        $nextPage = $hasNextPage ? $page + 1 : null;
 
         return response()->json([
             'active_carts' => [
-                'data' => $activeCarts,
-                'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
-                'current_page' => $paginator->currentPage(),
-                'has_more' => $paginator->hasMorePages(),
-            ]
+                'data' => $itemsForPage,
+                'next_page' => $nextPage,
+                'current_page' => $page,
+                'has_more' => $hasNextPage,
+                'total_count' => $filteredCarts->count(),
+            ],
+            'counts' => [
+                'all' => $totalAll,
+                'ready' => $totalReady,
+                'not_ready' => $totalNotReady,
+            ],
+            'total_count' => $filteredCarts->count(),
         ]);
     }
 }

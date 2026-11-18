@@ -49,6 +49,7 @@ Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 Route::get('/statistics', fn () => Inertia::render('statistics/Index'))->name('statistics');
 Route::get('/offers', fn () => Inertia::render('offers/Index'))->name('offers');
+Route::get('/notifications', fn () => Inertia::render('notifications/Index'))->name('notifications');
 Route::get('/regions', fn () => Inertia::render('regions/Index'))->name('regions');
 
 // Sub-Admin Management Page (Admin Only)

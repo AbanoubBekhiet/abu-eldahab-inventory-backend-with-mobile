@@ -16,6 +16,7 @@ use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CustomerCartController;
 
 use App\Http\Controllers\SubAdminController;
+use App\Http\Controllers\NotificationsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +71,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'apiLogout']);
         Route::post('/fcm-token', [AuthController::class, 'updateFcmToken']);
     });
+
+    // Notifications (authenticated users)
+    Route::get('/notifications', [NotificationsController::class, 'apiIndex']);
+    Route::get('/notifications/unread-count', [NotificationsController::class, 'apiUnreadCount']);
+    Route::post('/notifications/{id}/read', [NotificationsController::class, 'apiMarkAsRead']);
+    Route::post('/notifications/read-all', [NotificationsController::class, 'apiMarkAllAsRead']);
 
     // Staff Only Routes (Admin & Sub-Admin)
     Route::middleware('staff')->group(function () {
@@ -168,5 +175,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/regions', [RegionsController::class, 'apiStore']);
         Route::put('/regions/{region}', [RegionsController::class, 'apiUpdate']);
         Route::delete('/regions/{region}', [RegionsController::class, 'apiDestroy']);
+
+        // Notifications Management (Admin)
+        Route::post('/notifications', [NotificationsController::class, 'apiStore']);
+        Route::get('/notifications/sent', [NotificationsController::class, 'apiSentIndex']);
+        Route::get('/notifications/search-users', [NotificationsController::class, 'apiSearchUsers']);
     });
 });

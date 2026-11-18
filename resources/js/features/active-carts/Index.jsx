@@ -26,6 +26,7 @@ import api from '../../shared/services/api'
 export default function ActiveCartsIndex() {
     const [search, setSearch] = useState('')
     const [selectedRegion, setSelectedRegion] = useState('all')
+    const [readyStatus, setReadyStatus] = useState('all') // 'all' | 'ready' | 'not_ready'
     const [viewingCart, setViewingCart] = useState(null)
     const [productSearch, setProductSearch] = useState('')
     const queryClient = useQueryClient()
@@ -47,27 +48,28 @@ export default function ActiveCartsIndex() {
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const loadMoreRef = useRef(null)
 
-    // Reset pagination when search or selectedRegion changes
+    // Reset pagination when search, selectedRegion or readyStatus changes
     useEffect(() => {
         setAllCarts([])
         setHasMore(true)
         setPage(1)
-    }, [search, selectedRegion])
+    }, [search, selectedRegion, readyStatus])
 
     const fetchActiveCarts = useCallback(async (pageNum) => {
         const res = await api.get('/active-carts', { 
             params: { 
                 search: search || undefined,
                 region_id: selectedRegion !== 'all' ? selectedRegion : undefined,
+                ready_status: readyStatus !== 'all' ? readyStatus : undefined,
                 page: pageNum,
             } 
         })
         return res.data
-    }, [search, selectedRegion])
+    }, [search, selectedRegion, readyStatus])
 
     // React Query: Fetch first page
     const { data: cartsData, isLoading } = useQuery({
-        queryKey: ['active_carts', search, selectedRegion],
+        queryKey: ['active_carts', search, selectedRegion, readyStatus],
         queryFn: async () => fetchActiveCarts(1),
         staleTime: 0,
     })
@@ -239,6 +241,7 @@ export default function ActiveCartsIndex() {
     })
 
     const activeCarts = allCarts.length > 0 ? allCarts : (cartsData?.active_carts?.data || [])
+    const counts = cartsData?.counts || { all: activeCarts.length, ready: 0, not_ready: 0 }
 
     const formatCurrency = (val) => {
         const num = Number(val) || 0
@@ -262,8 +265,8 @@ export default function ActiveCartsIndex() {
     return (
         <AppLayout title="السلال النشطة" subtitle="العملاء الذين لديهم سلال نشطة حالياً">
             <div className="space-y-5" dir="rtl">
-                {/* Search Bar & Region Filters */}
-                <div className="space-y-3">
+                {/* Search Bar & Filters */}
+                <div className="space-y-3.5">
                     <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                         <SearchInput
                             placeholder="البحث بالاسم، الهاتف، المحل، العنوان، المنطقة..."
@@ -279,12 +282,69 @@ export default function ActiveCartsIndex() {
                         </div>
                     </div>
 
+                    {/* Ready Status Filter Tabs */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setReadyStatus('all')}
+                            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                                readyStatus === 'all'
+                                    ? 'bg-[#1B3629] text-white shadow-sm ring-2 ring-[#1B3629]/20'
+                                    : 'bg-white text-[#7C7870] border border-[#EAE8E2] hover:bg-[#FAF9F6]'
+                            }`}
+                        >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>جميع السلال</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                readyStatus === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                                {counts.all}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setReadyStatus('ready')}
+                            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                                readyStatus === 'ready'
+                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/20'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/70'
+                            }`}
+                        >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>جاهزة للإتمام (مستوفية)</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                readyStatus === 'ready' ? 'bg-white/20 text-white' : 'bg-emerald-200/70 text-emerald-800'
+                            }`}>
+                                {counts.ready}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setReadyStatus('not_ready')}
+                            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                                readyStatus === 'not_ready'
+                                    ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-600/20'
+                                    : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100/70'
+                            }`}
+                        >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>تحت الحد الأدنى</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                readyStatus === 'not_ready' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-800'
+                            }`}>
+                                {counts.not_ready}
+                            </span>
+                        </button>
+                    </div>
+
                     {/* Region Filter Pills */}
                     {regions.length > 0 && (
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs pt-1 border-t border-[#EAE8E2]/60">
                             <span className="text-[#9A978F] font-bold text-xs flex items-center gap-1 flex-shrink-0">
                                 <MapPin className="w-3.5 h-3.5 text-[#2E5A44]" />
-                                تصفية بالمنطقة:
+                                المنطقة:
                             </span>
                             <button
                                 onClick={() => setSelectedRegion('all')}
@@ -323,7 +383,7 @@ export default function ActiveCartsIndex() {
                     <div className="bg-white rounded-2xl border border-[#EAE8E2] p-12 text-center text-[#7C7870]">
                         <span className="text-4xl block mb-3">🛒</span>
                         <p className="font-bold">
-                            {search || selectedRegion !== 'all' ? 'لم يتم العثور على أي سلال تطابق التصفية.' : 'لا توجد سلال نشطة حالياً.'}
+                            {search || selectedRegion !== 'all' || readyStatus !== 'all' ? 'لم يتم العثور على أي سلال تطابق التصفية.' : 'لا توجد سلال نشطة حالياً.'}
                         </p>
                     </div>
                 ) : (

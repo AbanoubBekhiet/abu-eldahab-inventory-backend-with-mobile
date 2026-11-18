@@ -17,6 +17,7 @@ import {
     ShieldCheck,
     Store,
     Tag,
+    Bell,
     MapPin,
 } from 'lucide-react'
 import api, { clearAuthToken, getUserRole, isAdmin } from '../services/api'
@@ -34,6 +35,7 @@ const navItems = [
     { name: 'إدارة الموظفين', icon: ShieldCheck,   href: '/sub-admins', adminOnly: true },
     { name: 'الإحصائيات',  icon: BarChart3,       href: '/statistics', adminOnly: true },
     { name: 'العروض',      icon: Tag,             href: '/offers' },
+    { name: 'الإشعارات',   icon: Bell,            href: '/notifications' },
     { name: 'المناطق',     icon: MapPin,          href: '/regions' },
     { name: 'الإعدادات',   icon: Settings,        href: '/settings', adminOnly: true },
 ]
